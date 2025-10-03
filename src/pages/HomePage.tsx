@@ -53,38 +53,52 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Banner */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-6">
-                Mega Sale Event
-                <span className="block text-2xl md:text-3xl font-normal text-blue-100">
-                  Up to 70% Off
-                </span>
-              </h1>
-              <p className="text-xl text-blue-100 mb-8">
-                Discover amazing deals on your favorite products. Limited time offers on electronics, fashion, home goods, and more!
-              </p>
-              <Link
-                to="/products"
-                className="inline-flex items-center px-8 py-4 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors duration-200 text-lg"
-              >
-                Shop Now
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </Link>
-            </div>
-            <div className="hidden lg:block">
-              <img
-                src="https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=600"
-                alt="Shopping Sale"
-                className="rounded-2xl shadow-2xl"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+    
+{/* Hero Banner */}
+<section className="relative bg-[#0f2f7b] overflow-hidden">
+  {/* Decorative floating elements */}
+  <div className="absolute top-10 left-10 w-16 h-16 bg-pink-400 rounded-full shadow-lg animate-bounce" />
+  <div className="absolute bottom-0 px-30 right-[300px] w-20 h-20 bg-purple-500 rounded-full shadow-xl animate-bounce delay-200" />
+  <div className="absolute top-20 right-1/3 w-10 h-10 bg-blue-700 rounded-full shadow-md animate-pulse" />
+    <div className="absolute top-20  right-10 w-20 h-20 bg-red-200 rounded-full shadow-xl animate-bounce delay-200" />
+
+  <div className="max-w-6xl mx-auto px-5 py-19 text-center relative z-10">
+    {/* Headline */}
+    <h2 className="text-white text-lg uppercase tracking-widest mb-4">
+      Great Discount
+    </h2>
+
+    <h1 className="text-[80px] md:text-[120px] font-extrabold text-white drop-shadow-lg">
+      SALE
+    </h1>
+
+    <p className="text-white/90 text-lg md:text-xl max-w-2xl mx-auto mb-8">
+      Get amazing offers on electronics, fashion, and more. Don’t miss out — limited time only!
+    </p>
+
+    <Link
+      to="/products"
+      className="inline-block px-10 py-4 my-2 bg-white text-[#FFC64C] font-semibold text-lg rounded-full shadow-lg hover:bg-yellow-100 transition-transform transform hover:scale-105"
+    >
+      Shop Now
+    </Link>
+  </div>
+
+  {/* Floating shopping cart / gifts illustration */}
+  <img
+    src="https://cdn-icons-png.flaticon.com/512/1011/1011337.png"
+    alt="Shopping Cart"
+    className="absolute bottom-0 right-10 w-44 md:w-50 lg:w-60 drop-shadow-2xl animate-float"
+  />
+  <img
+    src="https://cdn-icons-png.flaticon.com/512/6459/6459276.png"
+    alt="Gift"
+    className="absolute bottom-10 left-10 w-24 md:w-28 lg:w-32 drop-shadow-2xl animate-float-slow"
+  />
+
+    
+</section>
+
 
       {/* Categories Section */}
       <section className="py-16">

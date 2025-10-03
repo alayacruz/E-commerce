@@ -275,9 +275,7 @@ const ProductDetails: React.FC = () => {
                 <button className="px-6 py-4 text-blue-600 border-b-2 border-blue-600 font-medium">
                   Specifications
                 </button>
-                <button className="px-6 py-4 text-gray-600 hover:text-gray-900">
-                  Reviews ({product.reviews})
-                </button>
+              
               </div>
             </div>
             <div className="p-6">
