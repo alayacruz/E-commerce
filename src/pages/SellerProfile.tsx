@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Store, MapPin, Phone, Mail, Edit3, Save, X, Camera } from 'lucide-react';
+import { User, Store, MapPin, Phone, Mail, CreditCard as Edit3, Save, X, Camera } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BottomNavigation from '../components/BottomNavigation';

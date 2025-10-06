@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreVertical, Package, Clock, Truck, X, Eye, MessageSquare } from 'lucide-react';
+import { MoveVertical as MoreVertical, Package, Clock, Truck, X, Eye, MessageSquare } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BottomNavigation from '../components/BottomNavigation';

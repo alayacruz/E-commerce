@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Search, MoreVertical, Trash2, Edit, Eye } from 'lucide-react';
+import { Plus, ListFilter as Filter, Search, MoveVertical as MoreVertical, Trash2, CreditCard as Edit, Eye } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BottomNavigation from '../components/BottomNavigation';

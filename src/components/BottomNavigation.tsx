@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Truck, Package, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Truck, Package, Circle as HelpCircle } from 'lucide-react';
 
 const BottomNavigation: React.FC = () => {
   const location = useLocation();

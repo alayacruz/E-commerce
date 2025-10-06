@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, TrendingUp, Package, DollarSign, Star, Eye, MoreVertical } from 'lucide-react';
+import { Plus, TrendingUp, Package, DollarSign, Star, Eye, MoveVertical as MoreVertical } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';
