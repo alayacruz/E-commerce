@@ -1,11 +1,12 @@
 import express from "express";
-import { prisma } from "../prismaClient.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { PrismaClient } from "@prisma/client";
+//import { authMiddleware } from "../middleware/auth.js";
 
-const router = express.Router();
+const sellerRouter = express.Router();
+const prisma = new PrismaClient();
 
 // add product
-router.post("/products", authMiddleware, async (req, res) => {
+sellerRouter.post("/products", async (req, res) => {
   try {
     const { name, description, price, stock } = req.body;
 
@@ -37,7 +38,7 @@ router.post("/products", authMiddleware, async (req, res) => {
 
 //kfkgj
 // get all products
-router.get("/products", authMiddleware, async (req, res) => {
+sellerRouter.get("/products", async (req, res) => {
   try {
     const products = await prisma.product.findMany({
       where: { seller_id: req.userId },
@@ -51,7 +52,7 @@ router.get("/products", authMiddleware, async (req, res) => {
 });
 
 // update products
-router.put("/products/:id", authMiddleware, async (req, res) => {
+sellerRouter.put("/products/:id", async (req, res) => {
   try {
     const { name, description, price, stock } = req.body;
     const product = await prisma.product.findUnique({
@@ -76,7 +77,7 @@ router.put("/products/:id", authMiddleware, async (req, res) => {
 });
 
 // delete product
-router.delete("/products/:id", authMiddleware, async (req, res) => {
+sellerRouter.delete("/products/:id", async (req, res) => {
   try {
     const product = await prisma.product.findUnique({
       where: { product_id: req.params.id },
@@ -93,4 +94,4 @@ router.delete("/products/:id", authMiddleware, async (req, res) => {
   }
 });
 
-export default router;
+export default sellerRouter;
