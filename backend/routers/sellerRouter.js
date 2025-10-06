@@ -35,6 +35,7 @@ router.post("/products", authMiddleware, async (req, res) => {
   }
 });
 
+//kfkgj
 // get all products
 router.get("/products", authMiddleware, async (req, res) => {
   try {
