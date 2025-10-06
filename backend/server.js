@@ -1,8 +1,8 @@
-import express from "express";
-import userRouter from "./routers/userRouter";
-import authRouter from "./routers/authRouter";
-import sellerRouter from "./routers/sellerRouter";
-import cors from "cors";
+const express = require("express");
+const userRouter = require("./routers/userRouter");
+const authRouter = require("./routers/authRouter");
+const sellerRouter = require("./routers/sellerRouter");
+const cors = require("cors");
 
 const app = express();
 const port = 3000;
