@@ -1,5 +1,5 @@
 import { useState, ChangeEvent, FormEvent } from "react";
-import { Eye, EyeOff, ShoppingCart } from "lucide-react";
+import { Eye, EyeOff, ShoppingCart, UserCog } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ScaleLoader } from "react-spinners";
 import toast, { Toaster } from "react-hot-toast";
@@ -11,12 +11,15 @@ interface FormData {
   confirmPassword: string;
   firstName: string;
   lastName: string;
+  phone: string;
+  address: string;
 }
 
 const LogIn: React.FC = () => {
   const navigate = useNavigate();
 
   const [isLogin, setIsLogin] = useState(true);
+  const [isSeller, setIsSeller] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,6 +30,8 @@ const LogIn: React.FC = () => {
     confirmPassword: "",
     firstName: "",
     lastName: "",
+    phone: "",
+    address: "",
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +44,12 @@ const LogIn: React.FC = () => {
     color: "#2798F5",
   };
 
+  // 🔄 Toggle between Seller/Buyer
+  const toggleUserType = () => {
+    setIsSeller(!isSeller);
+    toast(`${!isSeller ? "Seller" : "Buyer"} mode`, { style: toastStyle });
+  };
+
   const signup = async () => {
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match.", { style: toastStyle });
@@ -46,13 +57,19 @@ const LogIn: React.FC = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/user/signup", {
+      const endpoint = "http://localhost:3000/user/signup"; // single endpoint
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          username: `${formData.firstName}_${formData.lastName}`,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          isSeller: isSeller,
         }),
       });
 
@@ -77,7 +94,9 @@ const LogIn: React.FC = () => {
   const login = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:3000/user/login", {
+      const endpoint = "http://localhost:3000/user/login"; // same endpoint
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -91,7 +110,7 @@ const LogIn: React.FC = () => {
       if (response.ok) {
         localStorage.setItem("token", data.token);
         toast.success("Login successful!", { style: toastStyle });
-        navigate("/home");
+        navigate(isSeller ? "/seller/home" : "/home");
       } else {
         toast.error(`Login failed: ${data.message}`, { style: toastStyle });
       }
@@ -118,12 +137,13 @@ const LogIn: React.FC = () => {
       confirmPassword: "",
       firstName: "",
       lastName: "",
+      phone: "",
+      address: "",
     });
   };
 
   return (
     <section className="flex flex-col md:flex-row items-center overflow-auto justify-center min-h-screen bg-white text-black">
-      {/* Toast Container */}
       <Toaster position="bottom-right" reverseOrder={false} />
 
       {/* Left side - image */}
@@ -142,6 +162,18 @@ const LogIn: React.FC = () => {
           Shop Hub
         </div>
 
+        {/* 🔘 Toggle Buyer/Seller */}
+        <div className="flex justify-center mb-6 space-x-4">
+          <button
+            onClick={toggleUserType}
+            type="button"
+            className="flex items-center gap-2 px-5 py-2 bg-blue-300 text-black rounded-full font-semibold hover:bg-blue-400 transition"
+          >
+            <UserCog size={20} />
+            {isSeller ? "Switch to Buyer" : "Switch to Seller"}
+          </button>
+        </div>
+
         <div className="flex justify-center mb-3 space-x-4">
           <button
             type="button"
@@ -150,7 +182,7 @@ const LogIn: React.FC = () => {
               isLogin ? "bg-blue-500 text-black" : "bg-blue-400 text-black"
             }`}
           >
-            Log In
+            {isSeller ? "Log In as Seller" : "Log In as Buyer"}
           </button>
           <button
             type="button"
@@ -159,7 +191,7 @@ const LogIn: React.FC = () => {
               !isLogin ? "bg-blue-500 text-black" : "bg-blue-400 text-black"
             }`}
           >
-            Sign Up
+            {isSeller ? "Sign Up as Seller" : "Sign Up as Buyer"}
           </button>
         </div>
 
@@ -168,32 +200,54 @@ const LogIn: React.FC = () => {
         </h1>
         <p className="text-center text-gray-400 mb-5">
           {isLogin
-            ? "Log in to continue to your account"
-            : "Sign up to get started with us"}
+            ? `Log in to your ${isSeller ? "Seller" : "Buyer"} account`
+            : `Sign up to start as a ${isSeller ? "Seller" : "Buyer"}`}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-2">
           {!isLogin && (
-            <div className="flex space-x-4">
+            <>
+              <div className="flex space-x-4">
+                <input
+                  type="text"
+                  name="firstName"
+                  placeholder="First Name"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
               <input
                 type="text"
-                name="firstName"
-                placeholder="First Name"
-                value={formData.firstName}
+                name="phone"
+                placeholder="Phone Number"
+                value={formData.phone}
                 onChange={handleInputChange}
                 required
-                className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
+
               <input
                 type="text"
-                name="lastName"
-                placeholder="Last Name"
-                value={formData.lastName}
+                name="address"
+                placeholder="Address"
+                value={formData.address}
                 onChange={handleInputChange}
                 required
-                className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
-            </div>
+            </>
           )}
 
           <input
@@ -240,10 +294,16 @@ const LogIn: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                onClick={() =>
+                  setShowConfirmPassword(!showConfirmPassword)
+                }
                 className="absolute top-3 right-3 text-gray-400 hover:text-white"
               >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showConfirmPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
               </button>
             </div>
           )}
@@ -264,7 +324,9 @@ const LogIn: React.FC = () => {
             type="submit"
             className="w-full py-3 bg-blue-500 text-black font-semibold rounded-lg hover:bg-blue-600 transition"
           >
-            {isLogin ? "Log In" : "Create Account"}
+            {isLogin
+              ? `Log In as ${isSeller ? "Seller" : "Buyer"}`
+              : `Create ${isSeller ? "Seller" : "Buyer"} Account`}
           </button>
         </form>
 
@@ -280,7 +342,6 @@ const LogIn: React.FC = () => {
         </p>
       </div>
 
-      {/* Loader Overlay */}
       {isLoading && (
         <div className="fixed inset-0 flex justify-center items-center bg-blue-400 z-50">
           <ScaleLoader
