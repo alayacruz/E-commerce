@@ -36,7 +36,6 @@ sellerRouter.post("/products", async (req, res) => {
   }
 });
 
-//kfkgj
 // get all products
 sellerRouter.get("/products", async (req, res) => {
   try {

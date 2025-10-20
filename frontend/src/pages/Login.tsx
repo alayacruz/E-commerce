@@ -137,7 +137,7 @@ const LogIn: React.FC = () => {
   };
 
   return (
-    <section className="flex flex-col md:flex-row items-center overflow-auto justify-center min-h-screen bg-white text-black">
+    <section className="flex flex-col md:flex-row items-center overflow-hidden justify-center min-h-screen bg-white text-black">
       <Toaster position="bottom-right" reverseOrder={false} />
 
       {/* Left side - image */}
@@ -150,7 +150,7 @@ const LogIn: React.FC = () => {
       </div>
 
       {/* Right side - form */}
-      <div className="flex flex-col justify-center md:w-1/2 w-full p-8 md:p-16">
+      <div className="flex flex-col justify-center md:w-1/2 w-full  md:p-8">
         <div className="text-4xl font-bold text-center mb-6 text-blue-400 flex justify-center gap-4 items-center">
           <ShoppingCart size={36} />
           Shop Hub
@@ -242,7 +242,7 @@ const LogIn: React.FC = () => {
             required
             className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
-
+          
           {/* Password */}
           <div className="relative">
             <input
