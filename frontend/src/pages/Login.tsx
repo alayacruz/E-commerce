@@ -44,12 +44,6 @@ const LogIn: React.FC = () => {
     color: "#2798F5",
   };
 
-  // 🔄 Toggle between Seller/Buyer
-  const toggleUserType = () => {
-    setIsSeller(!isSeller);
-    toast(`${!isSeller ? "Seller" : "Buyer"} mode`, { style: toastStyle });
-  };
-
   const signup = async () => {
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match.", { style: toastStyle });
@@ -162,36 +156,25 @@ const LogIn: React.FC = () => {
           Shop Hub
         </div>
 
-        {/* 🔘 Toggle Buyer/Seller */}
-        <div className="flex justify-center mb-6 space-x-4">
-          <button
-            onClick={toggleUserType}
-            type="button"
-            className="flex items-center gap-2 px-5 py-2 bg-blue-300 text-black rounded-full font-semibold hover:bg-blue-400 transition"
-          >
-            <UserCog size={20} />
-            {isSeller ? "Switch to Buyer" : "Switch to Seller"}
-          </button>
-        </div>
-
-        <div className="flex justify-center mb-3 space-x-4">
+        {/* Seller/Buyer*/}
+        <div className="flex justify-center bg-blue-200 rounded-full p-1 mb-6 w-3/4 mx-auto">
           <button
             type="button"
-            onClick={() => setIsLogin(true)}
-            className={`px-6 py-2 rounded-full font-semibold ${
-              isLogin ? "bg-blue-500 text-black" : "bg-blue-400 text-black"
+            onClick={() => setIsSeller(false)}
+            className={`w-1/2 py-2 rounded-full font-semibold transition ${
+              !isSeller ? "bg-blue-500 text-black" : "text-gray-600"
             }`}
           >
-            {isSeller ? "Log In as Seller" : "Log In as Buyer"}
+            Buyer
           </button>
           <button
             type="button"
-            onClick={() => setIsLogin(false)}
-            className={`px-6 py-2 rounded-full font-semibold ${
-              !isLogin ? "bg-blue-500 text-black" : "bg-blue-400 text-black"
+            onClick={() => setIsSeller(true)}
+            className={`w-1/2 py-2 rounded-full font-semibold transition ${
+              isSeller ? "bg-blue-500 text-black" : "text-gray-600"
             }`}
           >
-            {isSeller ? "Sign Up as Seller" : "Sign Up as Buyer"}
+            Seller
           </button>
         </div>
 
@@ -294,16 +277,10 @@ const LogIn: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute top-3 right-3 text-gray-400 hover:text-white"
               >
-                {showConfirmPassword ? (
-                  <EyeOff size={20} />
-                ) : (
-                  <Eye size={20} />
-                )}
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           )}
