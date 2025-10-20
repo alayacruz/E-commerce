@@ -8,10 +8,10 @@ const prisma = new PrismaClient();
 // add product
 sellerRouter.post("/products", async (req, res) => {
   try {
-    const { name, description, price, stock } = req.body;
+    const { userId, name, description, price, stock } = req.body;
 
     const seller = await prisma.seller.findUnique({
-      where: { seller_id: req.userId },
+      where: { seller_id: userId },
     });
     if (!seller)
       return res.status(403).json({ error: "Not authorized as seller" });
@@ -36,12 +36,12 @@ sellerRouter.post("/products", async (req, res) => {
   }
 });
 
-//kfkgj
 // get all products
 sellerRouter.get("/products", async (req, res) => {
   try {
+    const { userId } = req.body;
     const products = await prisma.product.findMany({
-      where: { seller_id: req.userId },
+      where: { seller_id: userId },
       orderBy: { name: "asc" },
     });
     res.json(products);
@@ -54,12 +54,12 @@ sellerRouter.get("/products", async (req, res) => {
 // update products
 sellerRouter.put("/products/:id", async (req, res) => {
   try {
-    const { name, description, price, stock } = req.body;
+    const { userId, name, description, price, stock } = req.body;
     const product = await prisma.product.findUnique({
       where: { product_id: req.params.id },
     });
 
-    if (!product || product.seller_id !== req.userId)
+    if (!product || product.seller_id !== userId)
       return res.status(404).json({ error: "Product not found" });
 
     const status = stock > 0 ? "In Stock" : "Out of Stock";
@@ -79,11 +79,12 @@ sellerRouter.put("/products/:id", async (req, res) => {
 // delete product
 sellerRouter.delete("/products/:id", async (req, res) => {
   try {
+    const { userId } = req.body;
     const product = await prisma.product.findUnique({
       where: { product_id: req.params.id },
     });
 
-    if (!product || product.seller_id !== req.userId)
+    if (!product || product.seller_id !== userId)
       return res.status(404).json({ error: "Product not found" });
 
     await prisma.product.delete({ where: { product_id: req.params.id } });

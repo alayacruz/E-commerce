@@ -1,9 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// Prisma Schema for E-commerce System
 
 generator client {
   provider = "prisma-client-js"
@@ -21,10 +16,15 @@ enum Gender {
   others
 }
 
+enum PaymentMethod {
+  CoD
+  UPI
+}
+
 // MODELS
 
 model User {
-  user_id      String        @id
+  user_id      String        @id @default(uuid())
   email_id     String        @unique
   password     String
   first_name   String
@@ -46,22 +46,24 @@ model PhoneNumber {
 }
 
 model Seller {
-  seller_id String @id
+  seller_id String     @id @default(uuid())
   gst_no    String
-
   user      User       @relation(fields: [seller_id], references: [user_id])
   shipments Shipment[]
+  products  Product[]
 }
 
 model Buyer {
-  buyer_id String   @id
-  gender   Gender
-  dob      DateTime
-
+  buyer_id  String     @id @default(uuid())
+  gender    Gender
+  dob       DateTime
   user      User       @relation(fields: [buyer_id], references: [user_id])
   addresses Address[]
   orders    Order[]
   shipments Shipment[]
+  payments  Payment[]
+  reviews   Review[]
+  carts     Cart[]
 }
 
 model Address {
@@ -73,8 +75,9 @@ model Address {
   country    String
   pin        String
 
-  addresses Buyer[]
-  user      User    @relation(fields: [user_id], references: [user_id])
+  user          User    @relation(fields: [user_id], references: [user_id])
+  Buyer         Buyer?  @relation(fields: [buyerBuyer_id], references: [buyer_id])
+  buyerBuyer_id String?
 }
 
 model Order {
@@ -87,6 +90,7 @@ model Order {
   buyer       Buyer       @relation(fields: [buyer_id], references: [buyer_id])
   items       OrderItem[]
   shipment    Shipment[]
+  payments    Payment[]
   User        User?       @relation(fields: [userUser_id], references: [user_id])
   userUser_id String?
 }
@@ -97,7 +101,8 @@ model OrderItem {
   product_id    String
   quantity      Int
 
-  order Order @relation(fields: [order_id], references: [order_id])
+  order   Order   @relation(fields: [order_id], references: [order_id])
+  product Product @relation(fields: [product_id], references: [productId])
 }
 
 model Shipment {
@@ -114,4 +119,72 @@ model Shipment {
   seller Seller @relation(fields: [seller_id], references: [seller_id])
   buyer  Buyer  @relation(fields: [buyer_id], references: [buyer_id])
   order  Order  @relation(fields: [order_id], references: [order_id])
+}
+
+model Product {
+  productId         String  @id @default(uuid()) @db.VarChar(36)
+  name              String  @db.VarChar(20)
+  description       String? @db.VarChar(50)
+  price             Decimal @db.Decimal(10, 2)
+  availableQuantity Int
+  seller_id         String
+
+  seller     Seller      @relation(fields: [seller_id], references: [seller_id])
+  reviews    Review[]
+  cartItems  CartItem[]
+  categoryId Int?
+  category   Category?   @relation(fields: [categoryId], references: [categoryId])
+  orderItems OrderItem[]
+}
+
+model Payment {
+  paymentId String        @id @default(uuid()) @db.VarChar(36)
+  amount    Decimal       @db.Decimal(10, 2)
+  status    String        @db.VarChar(30)
+  date      DateTime
+  method    PaymentMethod
+  orderId   String
+  buyerId   String
+
+  order Order @relation(fields: [orderId], references: [order_id])
+  buyer Buyer @relation(fields: [buyerId], references: [buyer_id])
+}
+
+model Review {
+  reviewId  String   @id @default(uuid()) @db.VarChar(36)
+  text      String   @db.Text
+  rating    Int // ensure validation in code, Prisma doesn’t support @check
+  date      DateTime
+  productId String
+  buyerId   String
+
+  product Product @relation(fields: [productId], references: [productId])
+  buyer   Buyer   @relation(fields: [buyerId], references: [buyer_id])
+}
+
+model Cart {
+  cartId  String @id @default(uuid()) @db.VarChar(36)
+  buyerId String
+
+  buyer Buyer      @relation(fields: [buyerId], references: [buyer_id])
+  items CartItem[]
+}
+
+model CartItem {
+  cartItemId String @id @default(uuid()) @db.VarChar(36)
+  cartId     String
+  productId  String
+  quantity   Int
+
+  cart    Cart    @relation(fields: [cartId], references: [cartId])
+  product Product @relation(fields: [productId], references: [productId])
+}
+
+model Category {
+  categoryId       Int        @id @default(autoincrement())
+  categoryName     String     @db.VarChar(100)
+  parentCategoryId Int?
+  parentCategory   Category?  @relation("ParentChildCategory", fields: [parentCategoryId], references: [categoryId])
+  subcategories    Category[] @relation("ParentChildCategory")
+  products         Product[]
 }

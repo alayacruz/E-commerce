@@ -1,7 +1,7 @@
 import express from "express";
-import userRouter from "./routers/userRouter.js";
 import authRouter from "./routers/authRouter.js";
 import sellerRouter from "./routers/sellerRouter.js";
+import cartRouter from "./routers/cartRouter.js";
 import cors from "cors";
 
 const app = express();
@@ -15,8 +15,8 @@ app.use(
 
 app.use(express.json());
 app.use("/auth", authRouter);
-app.use("/user", userRouter);
 app.use("/seller", sellerRouter);
+app.use("/cart", cartRouter);
 
 app.listen(port, () => {
   console.log(`Server connected on port ${port}...`);
