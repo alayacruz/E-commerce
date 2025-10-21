@@ -3,6 +3,9 @@ import authRouter from "./routers/authRouter.js";
 import sellerRouter from "./routers/sellerRouter.js";
 import cartRouter from "./routers/cartRouter.js";
 import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const port = 3000;
