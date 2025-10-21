@@ -182,8 +182,8 @@ model CartItem {
 }
 
 model Category {
-  categoryId       Int        @id @default(autoincrement())
-  categoryName     String     @db.VarChar(100)
+  categoryId       Int        @id @default(autoincrement()) 
+  categoryName     String     @db.VarChar(100) 
   parentCategoryId Int?
   parentCategory   Category?  @relation("ParentChildCategory", fields: [parentCategoryId], references: [categoryId])
   subcategories    Category[] @relation("ParentChildCategory")

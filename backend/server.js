@@ -6,6 +6,7 @@ import reviewRouter from "./routers/reviewRouter.js";
 import paymentRouter from "./routers/paymentRouter.js";
 import searchRouter from "./routers/searchRouter.js";
 import orderRouter from "./routers/orderRouter.js";
+import categoryRouter from "./routers/categoryRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
 
@@ -28,6 +29,7 @@ app.use("/review", reviewRouter);
 app.use("/payment", paymentRouter);
 app.use("/search", searchRouter);
 app.use("/order", orderRouter);
+app.use("/category", categoryRouter);
 
 app.listen(port, () => {
   console.log(`Server connected on port ${port}...`);
