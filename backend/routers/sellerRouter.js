@@ -8,23 +8,25 @@ const sellerRouter = express.Router();
 const prisma = new PrismaClient();
 
 const isSeller = async (req, res, next) => {
-    if (!req.user) {
-        return res.status(401).json({ error: "Authentication failed." });
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication failed." });
+  }
+
+  try {
+    const seller = await prisma.seller.findUnique({
+      where: { seller_id: req.user.userId },
+    });
+
+    if (!seller) {
+      return res.status(403).json({ error: "Access denied: Not a seller" });
     }
 
-    try {
-        const seller = await prisma.seller.findUnique({
-            where: { seller_id: req.user.userId },
-        });
-
-        if (!seller) {
-            return res.status(403).json({ error: "Access denied: Not a seller" });
-        }
-
-        next();
-    } catch (error) {
-        return res.status(500).json({ error: "Server error during authorization." });
-    }
+    next();
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: "Server error during authorization." });
+  }
 };
 
 sellerRouter.use(authMiddleware);
@@ -32,8 +34,8 @@ sellerRouter.use(isSeller);
 
 sellerRouter.post("/products", async (req, res) => {
   try {
-    const { userId, name, description, price, availableQuantity } = req.body;
-
+    const { userId, name, description, price, availableQuantity, categoryId } =
+      req.body;
     if (name.length > 20)
       return res
         .status(403)
@@ -50,7 +52,7 @@ sellerRouter.post("/products", async (req, res) => {
 
     const status = availableQuantity > 0 ? "In Stock" : "Out of Stock";
 
-    const product = await prisma.product.create({
+    const newProduct = await prisma.product.create({
       data: {
         name,
         description,
@@ -58,6 +60,7 @@ sellerRouter.post("/products", async (req, res) => {
         availableQuantity,
         status,
         seller_id: seller.seller_id,
+        categoryId: categoryId,
       },
     });
     res.status(201).json(newProduct);
@@ -119,7 +122,9 @@ sellerRouter.delete("/products/:productId", async (req, res) => {
 
     if (!product) return res.status(404).json({ error: "Product not found" });
     if (product.seller_id !== sellerId)
-      return res.status(403).json({ error: "Access denied: You do not own this product" });
+      return res
+        .status(403)
+        .json({ error: "Access denied: You do not own this product" });
 
     await prisma.product.update({
       where: { product_id: productId },

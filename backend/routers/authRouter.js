@@ -145,7 +145,6 @@ authRouter.post("/login", async (req, res) => {
     return res.status(401).json({ message: "Incorrect password" });
   }
 
-
   // handling null last name
   const username = user.last_name
     ? `${user.first_name} ${user.last_name}`
