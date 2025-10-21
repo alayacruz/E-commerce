@@ -242,7 +242,7 @@ const LogIn: React.FC = () => {
             required
             className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
-          
+
           {/* Password */}
           <div className="relative">
             <input

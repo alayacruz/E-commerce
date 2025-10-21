@@ -164,7 +164,7 @@ model Review {
 }
 
 model Cart {
-  cartId  String @id @default(uuid()) @db.VarChar(36) @unique
+  cartId  String @id @unique @default(uuid()) @db.VarChar(36)
   buyerId String @unique
 
   buyer Buyer      @relation(fields: [buyerId], references: [buyer_id])

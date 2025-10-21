@@ -4,6 +4,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 const prisma = new PrismaClient();
-const reviewRouter = express.Router();
+const searchRouter = express.Router();
 
-export default reviewRouter;
+export default searchRouter;
