@@ -1,11 +1,35 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
-//import { authMiddleware } from "../middleware/auth.js";
+import dotenv from "dotenv";
+import authMiddleware from "../middleware/auth.middleware.js";
 
+dotenv.config();
 const sellerRouter = express.Router();
 const prisma = new PrismaClient();
 
-// add product
+const isSeller = async (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ error: "Authentication failed." });
+    }
+
+    try {
+        const seller = await prisma.seller.findUnique({
+            where: { seller_id: req.user.userId },
+        });
+
+        if (!seller) {
+            return res.status(403).json({ error: "Access denied: Not a seller" });
+        }
+
+        next();
+    } catch (error) {
+        return res.status(500).json({ error: "Server error during authorization." });
+    }
+};
+
+sellerRouter.use(authMiddleware);
+sellerRouter.use(isSeller);
+
 sellerRouter.post("/products", async (req, res) => {
   try {
     const { userId, name, description, price, availableQuantity } = req.body;
@@ -36,25 +60,24 @@ sellerRouter.post("/products", async (req, res) => {
         seller_id: seller.seller_id,
       },
     });
-
-    res.json({ message: "Product added successfully", product });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to add product" });
+    res.status(201).json(newProduct);
+  } catch (e) {
+    console.error("Failed to create product:", e);
+    res.status(500).json({ error: "Failed to create product" });
   }
 });
 
-// get all products
 sellerRouter.get("/products", async (req, res) => {
+  const sellerId = req.user?.userId;
+
   try {
-    const { userId } = req.body;
     const products = await prisma.product.findMany({
-      where: { seller_id: userId },
+      where: { seller_id: sellerId, isArchived: false },
       orderBy: { name: "asc" },
     });
     res.json(products);
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error("Failed to fetch products:", e);
     res.status(500).json({ error: "Failed to fetch products" });
   }
 });
@@ -78,28 +101,37 @@ sellerRouter.put("/products/:id", async (req, res) => {
       data: { name, description, price, availableQuantity, status },
     });
 
-    res.json({ message: "Product updated successfully", product: updated });
-  } catch (err) {
-    console.error(err);
+    res.json(updatedProduct);
+  } catch (e) {
+    console.error("Failed to update product:", e);
     res.status(500).json({ error: "Failed to update product" });
   }
 });
 
-// delete product
-sellerRouter.delete("/products/:id", async (req, res) => {
+sellerRouter.delete("/products/:productId", async (req, res) => {
+  const { productId } = req.params;
+  const sellerId = req.user?.userId;
+
   try {
-    const { userId } = req.body;
     const product = await prisma.product.findUnique({
-      where: { product_id: req.params.id },
+      where: { product_id: productId },
     });
 
-    if (!product || product.seller_id !== userId)
-      return res.status(404).json({ error: "Product not found" });
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (product.seller_id !== sellerId)
+      return res.status(403).json({ error: "Access denied: You do not own this product" });
 
-    await prisma.product.delete({ where: { product_id: req.params.id } });
-    res.json({ message: "Product deleted successfully" });
-  } catch (err) {
-    console.error(err);
+    await prisma.product.update({
+      where: { product_id: productId },
+      data: {
+        isArchived: true,
+        stock: 0,
+      },
+    });
+
+    res.status(200).json({ message: "Product archived successfully" });
+  } catch (e) {
+    console.error("Failed to delete product:", e);
     res.status(500).json({ error: "Failed to delete product" });
   }
 });
