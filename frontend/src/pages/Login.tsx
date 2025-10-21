@@ -1,10 +1,10 @@
 import { useState, ChangeEvent, FormEvent } from "react";
-import { Eye, EyeOff, ShoppingCart, UserCog } from "lucide-react";
+import { Eye, EyeOff, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ScaleLoader } from "react-spinners";
 import toast, { Toaster } from "react-hot-toast";
-import login_hero from "../public/login_hero.jpg";
+import LoginHero from "../public/login_hero.jpg";
 
+// Updated FormData to include all potential fields
 interface FormData {
   email: string;
   password: string;
@@ -13,6 +13,9 @@ interface FormData {
   lastName: string;
   phone: string;
   address: string;
+  gstNumber?: string;
+  gender: string;
+  dob: string; 
 }
 
 const LogIn: React.FC = () => {
@@ -32,9 +35,17 @@ const LogIn: React.FC = () => {
     lastName: "",
     phone: "",
     address: "",
+    gstNumber: "",
+    gender: "",
+    dob: "", 
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+  
+  // Handler for the new select dropdown
+  const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -50,21 +61,34 @@ const LogIn: React.FC = () => {
       return;
     }
 
+    // Basic validation for buyer-specific fields
+    if (!isSeller && (!formData.gender || !formData.dob)) {
+        toast.error("Gender and Date of Birth are required for buyers.", { style: toastStyle });
+        return;
+    }
+
+    setIsLoading(true);
     try {
-      const endpoint = "http://localhost:3000/user/signup"; // single endpoint
+      const endpoint = "http://localhost:3000/auth/signup"; // Assuming your server route is /auth
+
+      // Construct the body based on user type
+      const requestBody = {
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phoneNum: formData.phone, // Match backend expectation
+        address: { street: formData.address, city: "City", state: "State", country: "Country", pin: "12345" }, // Match backend expectation for object
+        isSeller: isSeller,
+        gstNo: isSeller ? formData.gstNumber : undefined,
+        gender: !isSeller ? formData.gender : undefined,
+        dob: !isSeller ? formData.dob : undefined,
+      };
 
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          isSeller: isSeller,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -82,13 +106,15 @@ const LogIn: React.FC = () => {
       toast.error("Signup failed due to network/server error.", {
         style: toastStyle,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const login = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const endpoint = "http://localhost:3000/user/login"; // same endpoint
+      const endpoint = "http://localhost:3000/auth/login";
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -118,9 +144,13 @@ const LogIn: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    isLogin ? login() : signup();
+    if (isLogin) {
+      await login();
+    } else {
+      await signup();
+    }
   };
 
   const toggleAuthMode = () => {
@@ -133,6 +163,9 @@ const LogIn: React.FC = () => {
       lastName: "",
       phone: "",
       address: "",
+      gender: "",
+      dob: "",
+      gstNumber: "",
     });
   };
 
@@ -143,26 +176,26 @@ const LogIn: React.FC = () => {
       {/* Left side - image */}
       <div className="hidden md:block md:w-1/2 h-screen">
         <img
-          src={login_hero}
+          src={LoginHero}
           alt="Login Hero"
           className="object-cover w-full h-full"
         />
       </div>
 
       {/* Right side - form */}
-      <div className="flex flex-col justify-center md:w-1/2 w-full  md:p-8">
-        <div className="text-4xl font-bold text-center mb-6 text-blue-400 flex justify-center gap-4 items-center">
+      <div className="flex flex-col justify-center md:w-1/2 w-full md:p-4">
+        <div className="text-4xl font-bold text-center mb-6 text-blue-500 flex justify-center gap-4 items-center">
           <ShoppingCart size={36} />
           Shop Hub
         </div>
 
-        {/* Seller/Buyer*/}
-        <div className="flex justify-center bg-blue-200 rounded-full p-1 mb-6 w-3/4 mx-auto">
+        {/* Seller/Buyer Toggle */}
+        <div className="flex justify-center bg-blue-100 rounded-full p-1 mb-6 w-3/4 mx-auto">
           <button
             type="button"
             onClick={() => setIsSeller(false)}
             className={`w-1/2 py-2 rounded-full font-semibold transition ${
-              !isSeller ? "bg-blue-500 text-black" : "text-gray-600"
+              !isSeller ? "bg-blue-500 text-white" : "text-gray-600"
             }`}
           >
             Buyer
@@ -171,7 +204,7 @@ const LogIn: React.FC = () => {
             type="button"
             onClick={() => setIsSeller(true)}
             className={`w-1/2 py-2 rounded-full font-semibold transition ${
-              isSeller ? "bg-blue-500 text-black" : "text-gray-600"
+              isSeller ? "bg-blue-500 text-white" : "text-gray-600"
             }`}
           >
             Seller
@@ -187,10 +220,10 @@ const LogIn: React.FC = () => {
             : `Sign up to start as a ${isSeller ? "Seller" : "Buyer"}`}
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <>
-              <div className="flex space-x-4">
+              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                 <input
                   type="text"
                   name="firstName"
@@ -198,7 +231,7 @@ const LogIn: React.FC = () => {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
-                  className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <input
                   type="text"
@@ -206,42 +239,109 @@ const LogIn: React.FC = () => {
                   placeholder="Last Name"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  required
-                  className="w-1/2 p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
               <input
-                type="text"
+                type="tel"
                 name="phone"
                 placeholder="Phone Number"
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
-
+              
               <input
                 type="text"
                 name="address"
-                placeholder="Address"
+                placeholder="Address (Street)"
                 value={formData.address}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </>
           )}
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-            className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
+          {/* --- DYNAMIC ROW FOR EMAIL / GENDER / GST / DOB --- */}
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            {/* Case 1: Buyer Signup -> Show Email + Gender + DOB */}
+            {!isLogin && !isSeller && (
+              <>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email Address"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleSelectChange}
+                  required
+                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
+                >
+                  <option value="" disabled>Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="others">Others</option>
+                </select>
+                <input
+                    type="date"
+                    name="dob"
+                    placeholder="Date of Birth"
+                    value={formData.dob}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
+                />
+              </>
+            )}
+
+            {/* Case 2: Seller Signup -> Show Email + GST */}
+            {!isLogin && isSeller && (
+              <>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email Address"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <input
+                  type="text"
+                  name="gstNumber"
+                  placeholder="GST Number"
+                  value={formData.gstNumber || ""}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </>
+            )}
+
+            {/* Case 3: Login -> Show only Email */}
+            {isLogin && (
+              <input
+                type="email"
+                name="email"
+                placeholder="Email Address"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            )}
+          </div>
+          
+          {/* --- END DYNAMIC ROW --- */}
 
           {/* Password */}
           <div className="relative">
@@ -252,12 +352,12 @@ const LogIn: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white"
+              className="absolute top-3 right-3 text-gray-500 hover:text-blue-500"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -273,12 +373,12 @@ const LogIn: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute top-3 right-3 text-gray-400 hover:text-white"
+                className="absolute top-3 right-3 text-gray-500 hover:text-blue-500"
               >
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -289,7 +389,7 @@ const LogIn: React.FC = () => {
             <div className="text-right">
               <a
                 href="#"
-                className="text-sm text-blue-400 hover:text-blue-300"
+                className="text-sm text-blue-500 hover:text-blue-600"
                 onClick={(e) => e.preventDefault()}
               >
                 Forgot your password?
@@ -299,20 +399,21 @@ const LogIn: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-3 bg-blue-500 text-black font-semibold rounded-lg hover:bg-blue-600 transition"
+            disabled={isLoading}
+            className="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition disabled:bg-blue-300"
           >
-            {isLogin
+            {isLoading ? "Processing..." : (isLogin
               ? `Log In as ${isSeller ? "Seller" : "Buyer"}`
-              : `Create ${isSeller ? "Seller" : "Buyer"} Account`}
+              : `Create ${isSeller ? "Seller" : "Buyer"} Account`)}
           </button>
         </form>
 
-        <p className="text-center mt-2 text-gray-400">
+        <p className="text-center mt-4 text-gray-500">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={toggleAuthMode}
-            className="text-blue-400 hover:underline"
+            className="text-blue-500 hover:underline font-semibold"
           >
             {isLogin ? "Sign up" : "Log in"}
           </button>
@@ -320,13 +421,8 @@ const LogIn: React.FC = () => {
       </div>
 
       {isLoading && (
-        <div className="fixed inset-0 flex justify-center items-center bg-blue-400 z-50">
-          <ScaleLoader
-            color={"#2798F5"}
-            loading={isLoading}
-            height={35}
-            width={5}
-          />
+        <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
+           <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
         </div>
       )}
     </section>
