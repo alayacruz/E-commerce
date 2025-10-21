@@ -127,7 +127,7 @@ model Product {
   description       String? @db.VarChar(50)
   price             Decimal @db.Decimal(10, 2)
   availableQuantity Int
-  status            String
+  status            String?
   seller_id         String
 
   seller     Seller      @relation(fields: [seller_id], references: [seller_id])
