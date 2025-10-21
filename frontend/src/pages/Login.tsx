@@ -144,9 +144,13 @@ const LogIn: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    isLogin ? login() : signup();
+    if (isLogin) {
+      await login();
+    } else {
+      await signup();
+    }
   };
 
   const toggleAuthMode = () => {
