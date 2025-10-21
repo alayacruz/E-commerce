@@ -127,6 +127,7 @@ model Product {
   description       String? @db.VarChar(50)
   price             Decimal @db.Decimal(10, 2)
   availableQuantity Int
+  status            String
   seller_id         String
 
   seller     Seller      @relation(fields: [seller_id], references: [seller_id])
@@ -173,7 +174,7 @@ model Cart {
 model CartItem {
   cartItemId String @id @default(uuid()) @db.VarChar(36)
   cartId     String
-  productId  String
+  productId  String @default(uuid())
   quantity   Int
 
   cart    Cart    @relation(fields: [cartId], references: [cartId])

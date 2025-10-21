@@ -8,22 +8,30 @@ const prisma = new PrismaClient();
 // add product
 sellerRouter.post("/products", async (req, res) => {
   try {
-    const { userId, name, description, price, stock } = req.body;
+    const { userId, name, description, price, availableQuantity } = req.body;
 
+    if (name.length > 20)
+      return res
+        .status(403)
+        .json({ error: "Product Name should not be more than 20 characters" });
+    if (description.length > 50)
+      return res
+        .status(403)
+        .json({ error: "Description should not be more than 50 characters" });
     const seller = await prisma.seller.findUnique({
       where: { seller_id: userId },
     });
     if (!seller)
       return res.status(403).json({ error: "Not authorized as seller" });
 
-    const status = stock > 0 ? "In Stock" : "Out of Stock";
+    const status = availableQuantity > 0 ? "In Stock" : "Out of Stock";
 
     const product = await prisma.product.create({
       data: {
         name,
         description,
         price,
-        stock,
+        availableQuantity,
         status,
         seller_id: seller.seller_id,
       },
@@ -54,19 +62,20 @@ sellerRouter.get("/products", async (req, res) => {
 // update products
 sellerRouter.put("/products/:id", async (req, res) => {
   try {
-    const { userId, name, description, price, stock } = req.body;
+    const { userId, name, description, price, availableQuantity } = req.body;
     const product = await prisma.product.findUnique({
-      where: { product_id: req.params.id },
+      where: { productId: req.params.id },
     });
 
+    console.log(product);
     if (!product || product.seller_id !== userId)
       return res.status(404).json({ error: "Product not found" });
 
-    const status = stock > 0 ? "In Stock" : "Out of Stock";
+    const status = availableQuantity > 0 ? "In Stock" : "Out of Stock";
 
     const updated = await prisma.product.update({
-      where: { product_id: req.params.id },
-      data: { name, description, price, stock, status },
+      where: { productId: req.params.id },
+      data: { name, description, price, availableQuantity, status },
     });
 
     res.json({ message: "Product updated successfully", product: updated });
