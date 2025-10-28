@@ -19,15 +19,15 @@ import LogIn from "./pages/Login";
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/login";
+  const isLoginPage = location.pathname === "/";
 
   return (
     <div className="min-h-screen bg-gray-50">
       {!isLoginPage && <Header />}
       <main className="min-h-screen">
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LogIn />} />
+          <Route path="/" element={<LogIn />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/products" element={<ProductListings />} />
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/cart" element={<ShoppingCart />} />

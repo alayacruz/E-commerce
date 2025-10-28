@@ -9,15 +9,6 @@ interface DashboardProps {
 
 const overviewCards = [
   {
-    id: 'views',
-    title: 'Total Views',
-    value: '45,231',
-    change: '+12.5%',
-    icon: Eye,
-    color: 'bg-blue-500',
-    clickable: false,
-  },
-  {
     id: 'sold',
     title: 'Products Sold',
     value: '1,234',
@@ -43,6 +34,15 @@ const overviewCards = [
     icon: Star,
     color: 'bg-amber-500',
     clickable: true,
+  },
+  {
+    id: 'cancelled',
+    title: 'Orders Cancelled',
+    value: '67',
+    change: '+12.5%',
+    icon: Eye,
+    color: 'bg-blue-500',
+    clickable: false,
   },
 ];
 
