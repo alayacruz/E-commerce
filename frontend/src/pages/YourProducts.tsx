@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Plus, Filter, ArrowUpDown, Trash2, Eye, CreditCard as Edit, Package, ArrowLeft } from 'lucide-react';
-import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BottomNav from '../components/BottomNav';
 import ProductDetail from '../components/ProductDetail';
+import Header_seller from '../components/Header_seller';
 
 interface YourProductsProps {
   onNavigate: (page: string) => void;
@@ -117,7 +117,7 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
   if (selectedProductData) {
     return (
       <div>
-        <Header onNavigate={onNavigate} />
+        <Header_seller onNavigate={onNavigate} />
         <ProductDetail
           product={selectedProductData}
           onBack={() => setSelectedProduct(null)}
@@ -137,7 +137,7 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onNavigate={onNavigate} />
+      <Header_seller onNavigate={onNavigate} />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 w-full">
         <button

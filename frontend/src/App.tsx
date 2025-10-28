@@ -30,20 +30,16 @@ function AppContent() {
   const isLoginPage = location.pathname === "/";
   const isSellerPage = location.pathname.startsWith("/seller");
 
-  // 5. Handle navigation requests from the Dashboard/Sidebar
   const handleSellerNavigate = (page: string) => {
-    // Map the simple page string to a full route path
     if (page === "dashboard") {
       navigate("/seller/home");
     } else {
-      // Assumes other pages are /seller/products, /seller/add-product, etc.
       navigate(`/seller/${page}`);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 6. Hide main Header on login AND seller pages */}
       {!isLoginPage && !isSellerPage && <Header />}
       <main className="min-h-screen">
         <Routes>
@@ -82,7 +78,6 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {/* 8. Hide main Footer on login AND seller pages */}
       {!isLoginPage && !isSellerPage && <Footer />}
     </div>
   );
