@@ -133,6 +133,10 @@ authRouter.post("/login", async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: { email_id: email },
+    include: {
+      phoneNumbers: true, // <-- This will fetch the related phone numbers
+      addresses: true,    // <-- This will fetch the related addresses
+    },
   });
 
   if (!user) {
@@ -150,19 +154,29 @@ authRouter.post("/login", async (req, res) => {
     ? `${user.first_name} ${user.last_name}`
     : user.first_name;
 
+  console.log(user);
   const token = jwt.sign(
     {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
+      userId: user.user_id,
+      username: username,
+      email: user.email_id,
+      firstName: user.first_name
     },
     SECRET_KEY,
     {
       expiresIn: "1h",
     }
   );
-
-  res.json({ message: "Login successful", token });
+  const userInfo = {
+    userId: user.user_id,
+    username: username,
+    email: user.email_id,
+    firstName: user.first_name,
+    phoneNumbers: user.phoneNumbers.map(p => p.phone_no),
+    // Pass the full addresses array
+    addresses: user.addresses,
+  }
+  res.json({ message: "Login successful", token, userInfo });
 });
 
 export default authRouter;

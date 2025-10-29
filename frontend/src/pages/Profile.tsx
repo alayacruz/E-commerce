@@ -1,28 +1,85 @@
 import { User, Mail, Phone, MapPin, Store, CreditCard as Edit, Save, ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+
+interface UserData {
+  name: string;
+  email: string;
+  storeName: string;
+  phone: string;
+  address: string;
+}
 
 interface ProfileProps {
   onNavigate: (page: string) => void;
 }
+const getInitialData = (): UserData => {
+  const storedUser = localStorage.getItem('user');
+
+  if (storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      console.log("parsed user is: ", parsedUser);
+      const firstAddress = (parsedUser.addresses && parsedUser.addresses.length > 0)
+        ? parsedUser.addresses[0]
+        : null;
+        
+      const streetAddress = (firstAddress && typeof firstAddress.street === 'string')
+        ? firstAddress.street 
+        : '';
+      return {
+        name: `${parsedUser.username}`,
+        email: parsedUser.email || '',
+        storeName: parsedUser.storeName || 'My Store', // Add this if it comes from login
+        phone: parsedUser.phoneNumbers,
+        address: streetAddress,
+      };
+    } catch (e) {
+      console.error("Failed to parse user data from localStorage", e);
+    }
+  }
+
+  return {
+    name: 'Seller Name',
+    email: 'seller@example.com',
+    storeName: 'My Store',
+    phone: '',
+    address: '',
+  };
+};
+
 
 export default function Profile({ onNavigate }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: 'John Seller',
-    email: 'john.seller@example.com',
-    phone: '+1 (555) 123-4567',
-    storeName: 'Tech Paradise Store',
-    address: '123 Business Ave, New York, NY 10001',
-    bio: 'Passionate about bringing quality tech products to customers worldwide.',
-  });
-
+  const [formData, setFormData] = useState<UserData>(getInitialData());
+  console.log("runnnign get intinal data: ", getInitialData());
   const handleSave = () => {
     setIsEditing(false);
-    alert('Profile updated successfully!');
-  };
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
 
+      const updatedUser = {
+        ...storedUser,
+        firstName: formData.name.split(' ')[0], 
+        lastName: formData.name.split(' ').slice(1).join(' '),
+        email: formData.email,
+        storeName: formData.storeName,
+        phoneNumbers: [formData.phone],
+        addresses: [
+          { 
+            ...(storedUser.addresses && storedUser.addresses[0]), 
+            street: formData.address 
+          }
+        ],
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log("Profile updated and saved to localStorage:", updatedUser);
+
+    } catch (e) {
+      console.error("Failed to save data to localStorage", e);
+    }
+  };
   return (
     <div className="min-h-screen flex flex-col">
       <Header onNavigate={onNavigate} showSearch={false} />
@@ -160,6 +217,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
       </main>
 
       <Footer />
+
     </div>
   );
 }
