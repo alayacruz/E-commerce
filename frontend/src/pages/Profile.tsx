@@ -1,9 +1,10 @@
 import { User, Mail, Phone, MapPin, Store, CreditCard as Edit, Save, ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { useState } from 'react';
+import Header_seller from '../components/Header_seller';
+import Footer_seller from '../components/Footer_seller';
 
 interface UserData {
+  bio: string | number | readonly string[] | undefined;
   name: string;
   email: string;
   storeName: string;
@@ -34,6 +35,7 @@ const getInitialData = (): UserData => {
         storeName: parsedUser.storeName || 'My Store', // Add this if it comes from login
         phone: parsedUser.phoneNumbers,
         address: streetAddress,
+        bio: parsedUser.bio || '',
       };
     } catch (e) {
       console.error("Failed to parse user data from localStorage", e);
@@ -46,6 +48,7 @@ const getInitialData = (): UserData => {
     storeName: 'My Store',
     phone: '',
     address: '',
+    bio: '',
   };
 };
 
@@ -82,7 +85,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
   };
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onNavigate={onNavigate} showSearch={false} />
+      <Header_seller onNavigate={onNavigate} showSearch={false} />
 
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <button
@@ -216,7 +219,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
         </div>
       </main>
 
-      <Footer />
+      <Footer_seller />
 
     </div>
   );
