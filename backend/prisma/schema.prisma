@@ -16,10 +16,8 @@ enum Gender {
   others
 }
 
-enum PaymentMethod {
-  CoD
-  UPI
-}
+
+
 
 // MODELS
 
@@ -96,7 +94,7 @@ model Order {
 }
 
 model OrderItem {
-  order_item_id String @id
+  order_item_id String @id @default(uuid())
   order_id      String
   product_id    String
   quantity      Int
@@ -143,10 +141,12 @@ model Payment {
   amount    Decimal       @db.Decimal(10, 2)
   status    String        @db.VarChar(30)
   date      DateTime
-  method    PaymentMethod
+  method    String
   orderId   String
   buyerId   String
-
+  
+external_transaction_id String
+external_capture_id String?
   order Order @relation(fields: [orderId], references: [order_id])
   buyer Buyer @relation(fields: [buyerId], references: [buyer_id])
 }

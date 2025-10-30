@@ -1,15 +1,14 @@
 import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 import authRouter from "./routers/authRouter.js";
 import sellerRouter from "./routers/sellerRouter.js";
-import cartRouter from "./routers/cartRouter.js";
 import reviewRouter from "./routers/reviewRouter.js";
 import paymentRouter from "./routers/paymentRouter.js";
 import searchRouter from "./routers/searchRouter.js";
 import orderRouter from "./routers/orderRouter.js";
 import categoryRouter from "./routers/categoryRouter.js";
-import cors from "cors";
-import dotenv from "dotenv";
-import { createClient } from "redis";
+import cartRouter from "./routers/cartRouter.js";
 
 dotenv.config();
 
