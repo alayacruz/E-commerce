@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Package, Clock, Truck, XCircle, MoreVertical, User, MapPin, ArrowLeft } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Footer_seller from '../components/Footer_seller';
 import BottomNav from '../components/BottomNav';
+import Header_seller from '../components/Header_seller';
 
 interface AllOrdersProps {
   onNavigate: (page: string) => void;
@@ -103,7 +103,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onNavigate={onNavigate} />
+      <Header_seller onNavigate={onNavigate} />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 w-full">
         <button
@@ -235,7 +235,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
         )}
       </main>
 
-      <Footer />
+      <Footer_seller />
       <BottomNav onNavigate={onNavigate} currentPage="orders" />
     </div>
   );

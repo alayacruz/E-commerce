@@ -15,7 +15,7 @@ interface FormData {
   address: string;
   gstNumber?: string;
   gender: string;
-  dob: string; 
+  dob: string;
 }
 
 const LogIn: React.FC = () => {
@@ -37,13 +37,13 @@ const LogIn: React.FC = () => {
     address: "",
     gstNumber: "",
     gender: "",
-    dob: "", 
+    dob: "",
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  
+
   // Handler for the new select dropdown
   const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,8 +63,8 @@ const LogIn: React.FC = () => {
 
     // Basic validation for buyer-specific fields
     if (!isSeller && (!formData.gender || !formData.dob)) {
-        toast.error("Gender and Date of Birth are required for buyers.", { style: toastStyle });
-        return;
+      toast.error("Gender and Date of Birth are required for buyers.", { style: toastStyle });
+      return;
     }
 
     setIsLoading(true);
@@ -129,6 +129,9 @@ const LogIn: React.FC = () => {
 
       if (response.ok) {
         localStorage.setItem("token", data.token);
+        console.log(data.token);
+        console.log("HI IM WORKGFIN");
+        localStorage.setItem("user", JSON.stringify(data.userInfo));
         toast.success("Login successful!", { style: toastStyle });
         navigate(isSeller ? "/seller/home" : "/home");
       } else {
@@ -194,18 +197,16 @@ const LogIn: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsSeller(false)}
-            className={`w-1/2 py-2 rounded-full font-semibold transition ${
-              !isSeller ? "bg-blue-500 text-white" : "text-gray-600"
-            }`}
+            className={`w-1/2 py-2 rounded-full font-semibold transition ${!isSeller ? "bg-blue-500 text-white" : "text-gray-600"
+              }`}
           >
             Buyer
           </button>
           <button
             type="button"
             onClick={() => setIsSeller(true)}
-            className={`w-1/2 py-2 rounded-full font-semibold transition ${
-              isSeller ? "bg-blue-500 text-white" : "text-gray-600"
-            }`}
+            className={`w-1/2 py-2 rounded-full font-semibold transition ${isSeller ? "bg-blue-500 text-white" : "text-gray-600"
+              }`}
           >
             Seller
           </button>
@@ -252,7 +253,7 @@ const LogIn: React.FC = () => {
                 required
                 className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
-              
+
               <input
                 type="text"
                 name="address"
@@ -292,13 +293,13 @@ const LogIn: React.FC = () => {
                   <option value="others">Others</option>
                 </select>
                 <input
-                    type="date"
-                    name="dob"
-                    placeholder="Date of Birth"
-                    value={formData.dob}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
+                  type="date"
+                  name="dob"
+                  placeholder="Date of Birth"
+                  value={formData.dob}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
                 />
               </>
             )}
@@ -340,7 +341,7 @@ const LogIn: React.FC = () => {
               />
             )}
           </div>
-          
+
           {/* --- END DYNAMIC ROW --- */}
 
           {/* Password */}
@@ -422,7 +423,7 @@ const LogIn: React.FC = () => {
 
       {isLoading && (
         <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
-           <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
+          <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
         </div>
       )}
     </section>

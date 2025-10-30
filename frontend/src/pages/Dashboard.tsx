@@ -1,22 +1,13 @@
 import { Eye, ShoppingBag, DollarSign, Star, TrendingUp, Plus } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Footer_seller from '../components/Footer_seller';
 import Sidebar from '../components/Sidebar';
+import Header_seller from '../components/Header_seller';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
 }
 
 const overviewCards = [
-  {
-    id: 'views',
-    title: 'Total Views',
-    value: '45,231',
-    change: '+12.5%',
-    icon: Eye,
-    color: 'bg-blue-500',
-    clickable: false,
-  },
   {
     id: 'sold',
     title: 'Products Sold',
@@ -43,6 +34,15 @@ const overviewCards = [
     icon: Star,
     color: 'bg-amber-500',
     clickable: true,
+  },
+  {
+    id: 'cancelled',
+    title: 'Orders Cancelled',
+    value: '67',
+    change: '+12.5%',
+    icon: Eye,
+    color: 'bg-blue-500',
+    clickable: false,
   },
 ];
 
@@ -83,7 +83,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       <Sidebar onNavigate={onNavigate} currentPage="dashboard" />
 
       <div className="flex-1 ml-64">
-        <Header onNavigate={onNavigate} />
+        <Header_seller onNavigate={onNavigate} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
@@ -181,7 +181,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </main>
 
-        <Footer />
+        <Footer_seller />
       </div>
     </div>
   );

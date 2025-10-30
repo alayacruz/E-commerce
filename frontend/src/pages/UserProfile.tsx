@@ -1,16 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   User,
   Package,
   MapPin,
+  CreditCard,
   Settings,
   CreditCard as Edit3,
   Save,
   X,
   Eye,
   Calendar,
+  Star,
 } from "lucide-react";
+
+interface StoredUser {
+  username: string;
+  email: string;
+  phoneNumbers: string[];
+  addresses: StoredAddress[];
+}
+
+interface StoredAddress {
+  address_id: number;
+  street: string;
+  city: string;
+  state: string;
+  pin: string;
+  country: string;
+}
+
+interface ComponentAddress {
+  id: number;
+  type: string;
+  name: string;
+  address: string;
+  city: string;
+  zipCode: string;
+  phone: string;
+  isDefault: boolean;
+}
 
 const UserProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState("profile");
@@ -22,28 +51,46 @@ const UserProfile: React.FC = () => {
     dateJoined: "2023-01-15",
   });
 
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      type: "Home",
-      name: "John Doe",
-      address: "123 Main Street",
-      city: "New York",
-      zipCode: "10001",
-      phone: "+1 (555) 123-4567",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      type: "Office",
-      name: "John Doe",
-      address: "456 Business Ave",
-      city: "New York",
-      zipCode: "10002",
-      phone: "+1 (555) 123-4567",
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<ComponentAddress[]>([]);
+  useEffect(() => {
+    const storedUserString = localStorage.getItem("user");
+    if (storedUserString) {
+      try {
+        const parsedUser: StoredUser = JSON.parse(storedUserString);
+
+        setUserInfo((prevInfo) => ({
+          ...prevInfo,
+          name: parsedUser.username || prevInfo.name,
+          email: parsedUser.email || prevInfo.email,
+          phone:
+            parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
+              ? parsedUser.phoneNumbers[0]
+              : prevInfo.phone,
+        }));
+
+        if (parsedUser.addresses && parsedUser.addresses.length > 0) {
+          const mappedAddresses: ComponentAddress[] = parsedUser.addresses.map(
+            (addr, index) => ({
+              id: addr.address_id,
+              type: "Home",
+              name: parsedUser.username,
+              address: addr.street,
+              city: addr.city,
+              zipCode: addr.pin,
+              phone:
+                parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
+                  ? parsedUser.phoneNumbers[0]
+                  : "",
+              isDefault: index === 0,
+            })
+          );
+          setAddresses(mappedAddresses);
+        }
+      } catch (e) {
+        console.error("Failed to parse user data from localStorage", e);
+      }
+    }
+  }, []);
 
   const orders = [
     {
@@ -77,7 +124,21 @@ const UserProfile: React.FC = () => {
 
   const handleSaveProfile = () => {
     setIsEditing(false);
-    // Here you would typically save to backend
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+      const updatedUser = {
+        ...storedUser,
+        username: userInfo.name,
+        email: userInfo.email,
+        phoneNumbers: [userInfo.phone],
+      };
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      console.log("Profile updated and saved to localStorage:", updatedUser);
+    } catch (e) {
+      console.error("Failed to save data to localStorage", e);
+    }
   };
 
   const getStatusColor = (status: string) => {

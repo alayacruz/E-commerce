@@ -9,7 +9,7 @@ export default function Sidebar({ onNavigate, currentPage = 'dashboard' }: Sideb
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Your Products', icon: Package },
-    { id: 'orders', label: 'All Orders', icon: ShoppingCart },
+    { id: 'all-orders', label: 'All Orders', icon: ShoppingCart },
   ];
 
   return (
@@ -17,7 +17,7 @@ export default function Sidebar({ onNavigate, currentPage = 'dashboard' }: Sideb
       <div className="px-6 mb-8">
         <div className="flex items-center gap-2">
           <Store className="w-8 h-8 text-blue-600" />
-          <span className="text-2xl font-bold text-gray-900">SellerHub</span>
+          <span className="text-2xl font-bold text-gray-900">ShopHub</span>
         </div>
       </div>
 
@@ -45,13 +45,16 @@ export default function Sidebar({ onNavigate, currentPage = 'dashboard' }: Sideb
         </ul>
 
         <div className="mt-8 pt-8 border-t border-gray-200">
-          <button
-            onClick={() => alert('Logout functionality')}
+            <button
+            onClick={() => {
+              window.location.href = '/';
+              
+            }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-          >
+            >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>
-          </button>
+            </button>
         </div>
       </nav>
     </aside>
