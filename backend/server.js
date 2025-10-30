@@ -9,6 +9,7 @@ import orderRouter from "./routers/orderRouter.js";
 import categoryRouter from "./routers/categoryRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
+import { createClient } from "redis";
 
 dotenv.config();
 

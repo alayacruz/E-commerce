@@ -81,7 +81,7 @@ model Address {
 }
 
 model Order {
-  order_id   String   @id
+  order_id   String   @id @default(uuid())
   order_date DateTime
   status     String
   amount     Decimal

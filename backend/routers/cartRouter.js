@@ -1,7 +1,31 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
+import { createClient } from "redis";
 
+let redisClient;
+const startServer = async () => {
+  redisClient = await createClient({
+    password: process.env.REDIS_PASSWD,
+    socket: {
+      host: process.env.REDIS_HOST,
+      port: process.env.REDIS_PORT,
+      tls: true,
+    },
+  });
+  await redisClient.connect();
+  redisClient.on("connect", () => {});
+  console.log(redisClient.isReady());
+  redisClient.on("ready", () => {
+    console.log("redis is connected");
+  });
+
+  redisClient.on("error", (err) => {
+    console.log("redis is disconnected: ", err);
+  });
+};
+
+startServer();
 dotenv.config();
 const prisma = new PrismaClient();
 const cartRouter = express.Router();
@@ -9,8 +33,18 @@ const cartRouter = express.Router();
 cartRouter.get("/", async (req, res) => {
   try {
     const { buyerId } = req.query;
+
     if (!buyerId)
       return res.status(400).json({ error: "Buyer ID not provided" });
+
+    const cachedCart = await redisClient.hGetAll(`cart:${buyerId}`);
+    if (Object.keys(cachedCart).length > 0) {
+      console.log("Cache hit");
+      const cartItems = Object.values(cachedCart).map((item) =>
+        JSON.parse(item)
+      );
+      return res.status(200).json({ cartItems });
+    }
 
     const cart = await prisma.cart.findUnique({
       where: { buyerId: buyerId.toString() },
@@ -21,6 +55,17 @@ cartRouter.get("/", async (req, res) => {
       where: { cartId: cart.cartId },
       include: { product: true },
     });
+
+    const pipeline = redisClient.multi();
+    cartItems.forEach((cartItem) => {
+      pipeline.hset(
+        `cart:${buyerId}`,
+        cartItem.productId.toString(),
+        JSON.stringify(cartItem)
+      );
+    });
+    pipeline.expire(`cart:${buyerId}`, 60 * 60 * 24);
+    await pipeline.exec();
 
     return res.status(200).json({ cartItems });
   } catch (error) {
@@ -67,6 +112,7 @@ cartRouter.post("/addItem", async (req, res) => {
       where: { productId },
       data: { availableQuantity: { decrement: quantity } },
     });
+    await redisClient.del(`cart:${buyerId}`);
 
     return res.status(200).json({ cartItem });
   } catch (error) {
@@ -116,6 +162,7 @@ cartRouter.patch("/updateQuantity", async (req, res) => {
       await prisma.cartItem.delete({
         where: { cartItemId: cartItem.cartItemId },
       });
+      await redisClient.del(`cart:${buyerId}`);
       return res.status(200).json({ message: "Item removed from cart" });
     }
 
@@ -123,7 +170,7 @@ cartRouter.patch("/updateQuantity", async (req, res) => {
       where: { cartItemId: cartItem.cartItemId },
       data: { quantity: newQuantity },
     });
-
+    await redisClient.del(`cart:${buyerId}`);
     return res.status(200).json({ cartItem });
   } catch (error) {
     console.error(error);
