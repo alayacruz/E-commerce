@@ -6,12 +6,9 @@ import { v4 as uuid4 } from "uuid";
 const prisma = new PrismaClient();
 const orderRouter = express.Router();
 
-// --- PAYPAL CONFIGURATION AND UTILITIES ---
-
-// IMPORTANT: Replace with your actual credentials, ideally from a secure environment file
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || "YOUR_CLIENT_ID";
-const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET || "YOUR_SECRET";
-const PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com"; // Use 'https://api-m.paypal.com' for production
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
+const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com";
 
 /**
  * Generates an OAuth 2.0 Access Token for PayPal API calls.
@@ -49,6 +46,8 @@ const getAccessToken = async () => {
  */
 const createPayPalOrder = async (
   amount,
+  returnUrl,
+  cancelUrl,
   currency_code = "USD",
   intent = "CAPTURE"
 ) => {
@@ -71,6 +70,18 @@ const createPayPalOrder = async (
           },
         },
       ],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            payment_method_preference: "IMMEDIATE_PAYMENT_REQUIRED",
+            landing_page: "LOGIN",
+            shipping_preference: "GET_FROM_FILE",
+            user_action: "PAY_NOW",
+            return_url: returnUrl,
+            cancel_url: cancelUrl,
+          },
+        },
+      },
     }),
   });
 
@@ -95,24 +106,28 @@ const generateOrderItemId = (orderId, productId) => {
   return `${orderId}-${productId}-${Date.now()}`;
 };
 
-// --- ROUTES ---
-
-/**
- * POST /api/orders/buyNow
- * Places an order for a single product immediately.
- * Requires: buyerId, productId, quantity, amount, paymentMethod (must be 'PayPal' or 'CoD')
- */
 orderRouter.post("/buyNow", async (req, res) => {
-  const { amount, buyerId, productId, quantity, paymentMethod } = req.body;
+  const {
+    amount,
+    buyerId,
+    productId,
+    quantity,
+    paymentMethod,
+    returnUrl,
+    cancelUrl,
+  } = req.body;
+  if (!amount || !buyerId || !productId || !quantity || !paymentMethod)
+    return res.status(400).json({
+      error: "Request body not complete",
+    });
 
-  // ... (Existing validation code remains the same) ...
-  // Note: The rest of the validation (null checks, stock checks, amount check) must remain.
+  if (!returnUrl || !cancelUrl)
+    return res.status(400).json({
+      error: "Request body does not have return/cancel Url",
+    });
 
-  // --- Core Logic Block ---
   const numericQuantity = parseInt(quantity);
   const numericAmount = parseFloat(amount);
-
-  // ... (rest of the validation logic for product/stock/amount) ...
 
   try {
     const product = await prisma.product.findUnique({
@@ -120,27 +135,33 @@ orderRouter.post("/buyNow", async (req, res) => {
     });
     if (!product) return res.status(404).json({ error: "Product not found." });
     if (product.availableQuantity < numericQuantity) {
-      /* ... stock error ... */
+      return res.status(500).json({
+        error: "Enough stock not available of product",
+      });
     }
 
-    // Security Check: Verify client-provided price against calculated price
     const expectedAmount = new Decimal(product.price)
       .mul(numericQuantity)
       .toFixed(2);
     if (parseFloat(expectedAmount) !== numericAmount) {
-      /* ... amount discrepancy error ... */
+      return res.status(400).json({
+        error: "Amount entered does not match Product Price*Quantity",
+      });
     }
-    // --- End of Core Logic Block ---
 
-    // 🛑 NEW PAYMENT INTEGRATION LOGIC 🛑
     let paymentExternalId = null;
     let approvalUrl = null;
 
     if (paymentMethod === "PayPal") {
-      const paypalOrder = await createPayPalOrder(new Decimal(numericAmount));
+      const paypalOrder = await createPayPalOrder(
+        new Decimal(numericAmount),
+        returnUrl,
+        cancelUrl
+      );
+      console.log("PAYPAL ORDER: ", paypalOrder);
       paymentExternalId = paypalOrder.id; // Store PayPal's Order ID
       const approvalLink = paypalOrder.links.find(
-        (link) => link.rel === "approve"
+        (link) => link.rel === "payer-action"
       );
       if (approvalLink) {
         approvalUrl = approvalLink.href;
@@ -151,7 +172,6 @@ orderRouter.post("/buyNow", async (req, res) => {
       return res.status(400).json({ error: "Unsupported payment method." });
     }
     const orderId = uuid4();
-    // Start Transaction for Atomicity
     const transactionResult = await prisma.$transaction(async (tx) => {
       // 1. Decrement inventory (Commitment before payment is finalized, typical for high-demand)
       await tx.product.update({
@@ -190,7 +210,6 @@ orderRouter.post("/buyNow", async (req, res) => {
           method: paymentMethod || "CoD",
           orderId: newOrder.order_id,
           buyerId: buyerId,
-          // Store the PayPal Order ID here
           external_transaction_id: paymentExternalId,
         },
       });
@@ -201,10 +220,8 @@ orderRouter.post("/buyNow", async (req, res) => {
     // 5. Send PayPal link back to client (If applicable)
     if (paymentMethod === "PayPal" && approvalUrl) {
       return res.status(202).json({
-        // 202 Accepted, transaction is ongoing
         message: "PayPal Order created. Redirect buyer for approval.",
         order: transactionResult,
-        // Client must redirect to this URL
         approval_url: approvalUrl,
         paypal_order_id: paymentExternalId,
       });
@@ -215,16 +232,124 @@ orderRouter.post("/buyNow", async (req, res) => {
       order: transactionResult,
     });
   } catch (err) {
-    // ... (Existing error handling) ...
     console.error("Buy Now order transaction failed:", err);
     res.status(500).json({ error: "Failed to place Buy Now order." });
   }
 });
 
-// ... (The /placeCart route would be updated similarly) ...
+// DOES NOT WORK
+orderRouter.post("/placeCart", async (req, res) => {
+  const {
+    amount, //total amount
+    buyerId,
+    productArr, //array having objects like {productId:"", quantity:int}
+    paymentMethod,
+    returnUrl,
+    cancelUrl,
+  } = req.body;
+  if (!buyerId || !productArr || !paymentMethod)
+    return res.status(400).json({
+      error: "Request body not complete",
+    });
+  if (!returnUrl || !cancelUrl)
+    return res.status(400).json({
+      error: "Request body does not have return/cancel Url",
+    });
+  try {
+    let numericAmount = 0;
+    const products = await Promise.all(
+      productArr.map(async (e) => {
+        const p = await prisma.product.findUnique({
+          where: { productId: e.productId },
+        });
+        if (!p) throw new Error("Product with given ID does not exist.");
+        if (p.quantity < e.quantity)
+          throw new Error("Enough stock not available of product");
+        numericAmount += p.price * e.quantity;
+        return p;
+      })
+    );
+    console.log("products are: ", products);
 
-// 🚀 NEW ROUTE: Finalize/Capture the PayPal Payment
-// This is called by the client *after* the buyer returns from PayPal's approval page.
+    let paymentExternalId = null;
+    let approvalUrl = null;
+
+    if (paymentMethod === "PayPal") {
+      const paypalOrder = await createPayPalOrder(
+        new Decimal(numericAmount),
+        returnUrl,
+        cancelUrl
+      );
+      console.log("PAYPAL ORDER: ", paypalOrder);
+      paymentExternalId = paypalOrder.id; // Store PayPal's Order ID
+      const approvalLink = paypalOrder.links.find(
+        (link) => link.rel === "payer-action"
+      );
+      if (approvalLink) {
+        approvalUrl = approvalLink.href;
+      } else {
+        throw new Error("Could not find PayPal approval URL.");
+      }
+    } else if (paymentMethod !== "CoD" && paymentMethod) {
+      return res.status(400).json({ error: "Unsupported payment method." });
+    }
+    const orderId = uuid4();
+    const transactionResult = await prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          order_id: orderId,
+          order_date: new Date(),
+          status: paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING",
+          amount: new Decimal(numericAmount),
+          buyer_id: buyerId,
+        },
+      });
+      products.forEach(async (e) => {
+        const orderItem = await tx.orderItem.create({
+          data: {
+            order_id: orderId,
+            product_id: e.productId,
+            quantity: productArr.find((x) => {
+              return x.productId === e.productId;
+            }).quantity,
+          },
+        });
+      });
+
+      await tx.payment.create({
+        data: {
+          amount: new Decimal(numericAmount),
+          // Status is PENDING for PayPal, INITIATED for CoD. It gets updated later for PayPal.
+          status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED",
+          date: new Date(),
+          method: paymentMethod || "CoD",
+          orderId: newOrder.order_id,
+          buyerId: buyerId,
+          external_transaction_id: paymentExternalId,
+        },
+      });
+      return newOrder;
+    });
+
+    if (paymentMethod === "PayPal" && approvalUrl) {
+      return res.status(202).json({
+        message: "PayPal Order created. Redirect buyer for approval.",
+        order: transactionResult,
+        approval_url: approvalUrl,
+        paypal_order_id: paymentExternalId,
+      });
+    }
+    res.status(201).json({
+      message: "Cart order placed successfully (CoD).",
+      order: transactionResult,
+    });
+  } catch (err) {
+    console.error("Cart order transaction failed:", err);
+    res.status(500).json({ error: "Failed to place Buy Now order." });
+  }
+});
+
+// called by the client *after* the buyer returns from PayPal's approval page.
 orderRouter.post("/capture", async (req, res) => {
   const { paypalOrderId } = req.body;
 
@@ -273,7 +398,6 @@ orderRouter.post("/capture", async (req, res) => {
           where: { paymentId: localPayment.paymentId },
           data: {
             status: "COMPLETED",
-            // Store the capture ID as a second external reference if needed
             external_capture_id:
               captureData.purchase_units[0].payments.captures[0].id,
           },

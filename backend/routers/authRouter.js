@@ -1,7 +1,7 @@
-import express from "express";
 import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import express from "express";
 import jwt from "jsonwebtoken";
 // --- 1. IMPORT YOUR AUTH MIDDLEWARE ---
 // (Make sure the path is correct)
@@ -141,7 +141,7 @@ authRouter.post("/login", async (req, res) => {
     where: { email_id: email },
     include: {
       phoneNumbers: true, // <-- This will fetch the related phone numbers
-      addresses: true,    // <-- This will fetch the related addresses
+      addresses: true, // <-- This will fetch the related addresses
     },
   });
 
@@ -166,7 +166,7 @@ authRouter.post("/login", async (req, res) => {
       userId: user.user_id,
       username: username,
       email: user.email_id,
-      firstName: user.first_name
+      firstName: user.first_name,
     },
     SECRET_KEY,
     {
