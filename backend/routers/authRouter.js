@@ -3,6 +3,9 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+// --- 1. IMPORT YOUR AUTH MIDDLEWARE ---
+// (Make sure the path is correct)
+import authMiddleware from "../middleware/auth.middleware.js"; 
 
 dotenv.config();
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
@@ -51,27 +54,30 @@ authRouter.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = `user_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    
+    // --- Use Prisma's default uuid generation ---
+    // const userId = `user_${Date.now()}_${Math.random()
+    //   .toString(36)
+    //   .substr(2, 9)}`;
 
     // Create user with related data using a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create user
       const user = await tx.user.create({
         data: {
-          user_id: userId,
+          // user_id: userId, // Let Prisma handle the ID
           email_id: email,
           password: hashedPassword,
           first_name: firstName,
           last_name: lastName || null,
+          // 'createdAt' will be set by the database default
         },
       });
 
       // Create phone number
       await tx.phoneNumber.create({
         data: {
-          user_id: userId,
+          user_id: user.user_id, // Use the ID from the created user
           phone_no: phoneNum,
         },
       });
@@ -79,7 +85,7 @@ authRouter.post("/signup", async (req, res) => {
       // Create address
       await tx.address.create({
         data: {
-          user_id: userId,
+          user_id: user.user_id, // Use the ID from the created user
           street: address.street,
           city: address.city,
           state: address.state,
@@ -92,14 +98,14 @@ authRouter.post("/signup", async (req, res) => {
       if (isSeller) {
         await tx.seller.create({
           data: {
-            seller_id: userId,
+            seller_id: user.user_id, // Use the ID from the created user
             gst_no: gstNo,
           },
         });
       } else {
         await tx.buyer.create({
           data: {
-            buyer_id: userId,
+            buyer_id: user.user_id, // Use the ID from the created user
             gender: gender.toLowerCase(),
             dob: new Date(dob),
           },
@@ -167,16 +173,94 @@ authRouter.post("/login", async (req, res) => {
       expiresIn: "1h",
     }
   );
+
+  // --- 2. UPDATE userInfo OBJECT ---
   const userInfo = {
     userId: user.user_id,
     username: username,
     email: user.email_id,
     firstName: user.first_name,
     phoneNumbers: user.phoneNumbers.map(p => p.phone_no),
-    // Pass the full addresses array
     addresses: user.addresses,
+    createdAt: user.createdAt, // <-- ADD THIS LINE
   }
   res.json({ message: "Login successful", token, userInfo });
 });
+
+
+// --- 3. ADD NEW ROUTE TO UPDATE PROFILE ---
+authRouter.put("/profile", authMiddleware, async (req, res) => {
+  const { userId } = req.user; // Get userId from the auth token
+  const { username, email, phoneNumbers } = req.body;
+
+  if (!username || !email || !phoneNumbers) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    // Parse the data from the frontend
+    const [firstName, ...lastNameParts] = username.split(' ');
+    const lastName = lastNameParts.join(' ') || null;
+    const newPhone = phoneNumbers[0] || ""; // Get the primary phone
+
+    // Use a transaction to update user and phone number
+    await prisma.$transaction(async (tx) => {
+      // 1. Update the User model
+      await tx.user.update({
+        where: { user_id: userId },
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          email_id: email,
+        }
+      });
+
+      // 2. Delete all old phone numbers for this user
+      await tx.phoneNumber.deleteMany({
+        where: { user_id: userId }
+      });
+
+      // 3. Add the new phone number (if it's not empty)
+      if (newPhone) {
+        await tx.phoneNumber.create({
+          data: {
+            user_id: userId,
+            phone_no: newPhone
+          }
+        });
+      }
+    });
+    
+    // 4. Fetch the full, updated user info to send back
+    const fullUser = await prisma.user.findUnique({
+      where: { user_id: userId },
+      include: { phoneNumbers: true, addresses: true }
+    });
+
+    const updatedUsername = fullUser.last_name ? `${fullUser.first_name} ${fullUser.last_name}` : fullUser.first_name;
+
+    // Create the same userInfo object as the login route
+    const userInfo = {
+      userId: fullUser.user_id,
+      username: updatedUsername,
+      email: fullUser.email_id,
+      firstName: fullUser.first_name,
+      phoneNumbers: fullUser.phoneNumbers.map(p => p.phone_no),
+      addresses: fullUser.addresses,
+      createdAt: fullUser.createdAt 
+    };
+    
+    // 5. Send the new user object back to the frontend
+    res.json(userInfo); 
+
+  } catch (e) {
+    console.error("Profile update error:", e);
+    if (e.code === 'P2002') {
+      return res.status(400).json({ error: "This email is already in use." });
+    }
+    res.status(500).json({ error: "Failed to update profile." });
+  }
+});
+
 
 export default authRouter;

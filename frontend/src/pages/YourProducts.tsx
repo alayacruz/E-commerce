@@ -1,118 +1,141 @@
-import { useState } from 'react';
-import { Plus, Filter, ArrowUpDown, Trash2, Eye, CreditCard as Edit, Package, ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Filter, ArrowUpDown, Trash2, Eye, CreditCard as Edit, Package, ArrowLeft, Loader2 } from 'lucide-react';
 import Footer from '../components/Footer';
 import BottomNav from '../components/BottomNav';
 import ProductDetail from '../components/ProductDetail';
 import Header_seller from '../components/Header_seller';
+import { useAuth } from '../contexts/AuthContext';
 
 interface YourProductsProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, productId?: string) => void;
 }
 
-const categories = ['All Categories', 'Electronics', 'Accessories', 'Home & Office', 'Wearables'];
+interface Product {
+  id: string; 
+  name: string;
+  price: number;
+  stock: number; 
+  category: string; 
+  imageUrls: string[]; 
+  views: number; 
+  sales: number;
+  description: string;
+}
+
+interface Category {
+  categoryId: number;
+  categoryName: string;
+}
 const sortOptions = ['Name (A-Z)', 'Name (Z-A)', 'Price (Low to High)', 'Price (High to Low)', 'Stock (Low to High)'];
 
-const dummyProducts = [
-  {
-    id: 1,
-    name: 'Wireless Headphones',
-    price: 89.99,
-    stock: 45,
-    category: 'Electronics',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
-    views: 1234,
-    sales: 89,
-    description: 'Premium wireless headphones with active noise cancellation, 30-hour battery life, and superior sound quality. Perfect for music lovers and professionals who demand the best audio experience.',
-  },
-  {
-    id: 2,
-    name: 'Smart Watch Pro',
-    price: 299.99,
-    stock: 23,
-    category: 'Wearables',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
-    views: 2341,
-    sales: 156,
-    description: 'Advanced smartwatch with fitness tracking, heart rate monitoring, GPS, and water resistance. Stay connected and healthy with this cutting-edge wearable technology.',
-  },
-  {
-    id: 3,
-    name: 'Laptop Stand',
-    price: 49.99,
-    stock: 67,
-    category: 'Home & Office',
-    image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop',
-    views: 876,
-    sales: 234,
-    description: 'Ergonomic laptop stand designed to improve posture and reduce neck strain. Adjustable height and angle, compatible with all laptop sizes. Made from premium aluminum alloy.',
-  },
-  {
-    id: 4,
-    name: 'Mechanical Keyboard',
-    price: 149.99,
-    stock: 12,
-    category: 'Electronics',
-    image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop',
-    views: 1543,
-    sales: 67,
-    description: 'Professional mechanical keyboard with RGB backlighting, customizable keys, and tactile switches. Perfect for gaming and typing with exceptional durability and response time.',
-  },
-  {
-    id: 5,
-    name: 'Wireless Mouse',
-    price: 29.99,
-    stock: 89,
-    category: 'Accessories',
-    image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=400&h=400&fit=crop',
-    views: 654,
-    sales: 178,
-    description: 'Ergonomic wireless mouse with precision tracking and long battery life. Comfortable design for extended use, perfect for both work and gaming.',
-  },
-  {
-    id: 6,
-    name: 'USB-C Hub',
-    price: 79.99,
-    stock: 34,
-    category: 'Accessories',
-    image: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=400&h=400&fit=crop',
-    views: 987,
-    sales: 123,
-    description: 'Multi-port USB-C hub with HDMI, USB 3.0, SD card reader, and power delivery. Expand your connectivity options with this essential accessory for modern laptops.',
-  },
-  {
-    id: 7,
-    name: 'Desk Lamp',
-    price: 39.99,
-    stock: 56,
-    category: 'Home & Office',
-    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&h=400&fit=crop',
-    views: 432,
-    sales: 98,
-    description: 'LED desk lamp with adjustable brightness and color temperature. Energy-efficient lighting solution for your workspace with modern design and flexible positioning.',
-  },
-  {
-    id: 8,
-    name: 'Bluetooth Speaker',
-    price: 69.99,
-    stock: 41,
-    category: 'Electronics',
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&h=400&fit=crop',
-    views: 1876,
-    sales: 201,
-    description: 'Portable Bluetooth speaker with powerful sound, deep bass, and 12-hour battery life. Waterproof design makes it perfect for outdoor adventures and parties.',
-  },
-];
-
 export default function YourProducts({ onNavigate }: YourProductsProps) {
+  const { token } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedSort, setSelectedSort] = useState('Name (A-Z)');
-  const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!token) { 
+        setError("You are not logged in.");
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('http://localhost:3000/seller/products', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Failed to fetch products');
+        }
+        const data = await response.json();
+        const transformedData: Product[] = data.map((p: any) => ({
+          id: p.productId,
+          name: p.name,
+          price: parseFloat(p.price),
+          stock: p.availableQuantity,
+          description: p.description || 'No description available.',
+          imageUrls: p.imageUrls && p.imageUrls.length > 0
+  ? p.imageUrls
+  : ['https://via.placeholder.com/400?text=No+Image'],
+          category: p.category ? p.category.categoryName : 'Uncategorized',
+          views: Math.floor(Math.random() * 1500) + 50,
+          sales: Math.floor(Math.random() * 200) + 10,
+        }));
+        setProducts(transformedData);
+      } catch (err: unknown) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [token]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/category');
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        setCategories(data);
+      } catch (err) {
+        console.error("Category fetch error:", (err as Error).message);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const handleDelete = async (productId: string, productName: string) => {
+    if (!confirm(`Are you sure you want to delete '${productName}'?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/seller/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to delete product');
+      }
+
+      // If delete is successful, remove it from the state
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      
+      // If the detailed view was open, close it
+      if (selectedProduct === productId) {
+        setSelectedProduct(null);
+      }
+
+      alert('Product deleted (archived) successfully');
+
+    } catch (err: unknown) {
+      alert(`Error: ${(err as Error).message}`);
+    }
+  };
+
+
+  // 7. Update filter/find logic to use the 'products' state
   const filteredProducts = selectedCategory === 'All Categories'
-    ? dummyProducts
-    : dummyProducts.filter(p => p.category === selectedCategory);
+    ? products
+    : products.filter(p => p.category === selectedCategory);
 
-  const selectedProductData = dummyProducts.find(p => p.id === selectedProduct);
+  const selectedProductData = products.find(p => p.id === selectedProduct);
 
   if (selectedProductData) {
     return (
@@ -121,13 +144,8 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
         <ProductDetail
           product={selectedProductData}
           onBack={() => setSelectedProduct(null)}
-          onEdit={() => alert('Edit product: ' + selectedProductData.name)}
-          onDelete={() => {
-            if (confirm('Delete ' + selectedProductData.name + '?')) {
-              alert('Deleted');
-              setSelectedProduct(null);
-            }
-          }}
+          onEdit={() => onNavigate('add-product', selectedProductData.id)}
+          onDelete={() => handleDelete(selectedProductData.id, selectedProductData.name)}
         />
         <Footer />
         <BottomNav onNavigate={onNavigate} currentPage="products" />
@@ -170,9 +188,14 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                  disabled={categories.length === 0}
                 >
+                  <option value="All Categories">All Categories</option>
+
                   {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.categoryName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -193,19 +216,37 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
           </div>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        
+{loading && (
+          <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
+            <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Your Products...</h3>
+            <p className="text-gray-600">Please wait a moment.</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="flex flex-col items-center justify-center text-center p-12 bg-red-50 text-red-700 rounded-xl border border-red-200">
+            <Package className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-red-800 mb-2">Error Fetching Products</h3>
+            <p className="text-red-700 mb-6">{error}</p>
+          </div>
+        )}
+
+        {/* 10. Update render logic to check for loading/error first */}
+        {!loading && !error && filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <div
-                key={product.id}
+                key={product.id} // Use the string id
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all group"
               >
                 <div
                   className="relative aspect-square bg-gray-100 cursor-pointer"
-                  onClick={() => setSelectedProduct(selectedProduct === product.id ? null : product.id)}
+                  onClick={() => setSelectedProduct(selectedProduct === product.id ? null : product.id)} // Use string id
                 >
                   <img
-                    src={product.image}
+                    src={product.imageUrls[0]} // Use the new image path
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -223,7 +264,7 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                   <h3 className="font-semibold text-gray-900 mb-2 truncate">{product.name}</h3>
 
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xl font-bold text-gray-900">${product.price}</span>
+                    <span className="text-xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
                     <span className={`text-sm font-medium ${product.stock < 20 ? 'text-red-600' : 'text-green-600'}`}>
                       Stock: {product.stock}
                     </span>
@@ -243,7 +284,8 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                       Edit
                     </button>
                     <button
-                      onClick={() => confirm('Delete ' + product.name + '?') && alert('Deleted')}
+                      // 11. Wire up real delete here too
+                      onClick={() => handleDelete(product.id, product.name)}
                       className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -254,18 +296,21 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600 mb-6">Start by adding your first product to your catalog.</p>
-            <button
-              onClick={() => onNavigate('add-product')}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              <Plus className="w-5 h-5" />
-              Add Your First Product
-            </button>
-          </div>
+          // 12. Only show "No Products" if not loading and no error
+          !loading && !error && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+              <p className="text-gray-600 mb-6">Start by adding your first product to your catalog.</p>
+              <button
+                onClick={() => onNavigate('add-product')}
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Product
+              </button>
+            </div>
+          )
         )}
       </main>
 

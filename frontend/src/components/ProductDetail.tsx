@@ -1,15 +1,20 @@
-import { ArrowLeft, Package, DollarSign, Eye, ShoppingCart, Star, CreditCard as Edit, Trash2, AlertCircle } from 'lucide-react';
+import { useState } from 'react'; // Import useState
+import { ArrowLeft, Package, Eye, ShoppingCart, Star, CreditCard as Edit, Trash2, AlertCircle } from 'lucide-react';
 
+// --- 1. UPDATE THE INTERFACE ---
+// It must match the 'Product' interface from YourProducts.tsx
+// 'image' is replaced with 'imageUrls'
 interface Product {
-  id: number;
+  id: string; // Was number, should be string
   name: string;
   price: number;
+  originalPrice?: number; // Add this, based on your screenshot
   stock: number;
   category: string;
-  image: string;
+  imageUrls: string[]; // <-- THE MAIN FIX
   views: number;
   sales: number;
-  description?: string;
+  description: string; // Make this required
   rating?: number;
   reviews?: number;
 }
@@ -22,11 +27,20 @@ interface ProductDetailProps {
 }
 
 export default function ProductDetail({ product, onBack, onEdit, onDelete }: ProductDetailProps) {
+  // --- 2. ADD STATE TO TRACK THE SELECTED IMAGE ---
+  const [selectedImage, setSelectedImage] = useState(0);
+
   const defaultDescription = `${product.name} is a premium quality product designed to meet your needs. This product features excellent build quality and reliable performance. Perfect for both personal and professional use.`;
 
   const description = product.description || defaultDescription;
+  
+  // Use optional chaining for rating/reviews
   const rating = product.rating || 4.5;
   const reviews = product.reviews || Math.floor(product.sales * 0.6);
+
+  // Use optional chaining for original price
+  const originalPrice = product.originalPrice || product.price * 1.2;
+  const discount = product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 17;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,22 +57,34 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 md:p-8">
             <div>
               <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-4">
+                {/* --- 3. FIX THE MAIN IMAGE --- */}
+                {/* Use the 'selectedImage' state and 'imageUrls' array */}
                 <img
-                  src={product.image}
+                  src={product.imageUrls[selectedImage] || 'https://via.placeholder.com/800?text=No+Image'}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
               </div>
 
+              {/* --- 4. FIX THE THUMBNAILS --- */}
+              {/* Map over the 'product.imageUrls' array instead of a hardcoded array */}
               <div className="grid grid-cols-4 gap-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-square bg-gray-100 rounded-lg overflow-hidden opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
+                {product.imageUrls.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                      selectedImage === index 
+                        ? 'ring-2 ring-blue-500 opacity-100' 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
                     <img
-                      src={product.image}
-                      alt={`${product.name} view ${i}`}
+                      src={image} // Use the 'image' variable from the loop
+                      alt={`${product.name} view ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -81,10 +107,11 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                   </div>
                 </div>
 
+                {/* Use the dynamic price variables */}
                 <div className="flex items-baseline gap-3 mb-6">
-                  <span className="text-4xl font-bold text-gray-900">${product.price}</span>
-                  <span className="text-gray-500 line-through text-xl">${(product.price * 1.2).toFixed(2)}</span>
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">17% OFF</span>
+                  <span className="text-4xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
+                  <span className="text-gray-500 line-through text-xl">${originalPrice.toFixed(2)}</span>
+                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">{discount}% OFF</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
@@ -138,7 +165,7 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                     <p className="text-sm text-gray-600">Revenue</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{((product.sales / product.views) * 100).toFixed(1)}%</p>
+                    <p className="text-2xl font-bold text-gray-900">{((product.sales / (product.views || 1)) * 100).toFixed(1)}%</p>
                     <p className="text-sm text-gray-600">Conversion</p>
                   </div>
                   <div className="text-center">
