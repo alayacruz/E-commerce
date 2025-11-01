@@ -19,6 +19,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@elastic/elasticsearch": "^9.2.0",
     "@mockoon/cli": "^9.3.0",
     "@paypal/paypal-server-sdk": "^1.0.0",
     "@prisma/client": "^6.18.0",

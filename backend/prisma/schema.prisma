@@ -121,7 +121,7 @@ model Shipment {
 }
 
 model Product {
-  productId         String    @id @default(uuid()) @db.VarChar(36)
+  productId         String    @id @default(uuid()) @db.Uuid()
   name              String    @db.VarChar(50)
   description       String?   @db.VarChar(200)
   price             Decimal   @db.Decimal(10, 2)
