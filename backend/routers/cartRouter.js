@@ -43,7 +43,10 @@ cartRouter.get("/", async (req, res) => {
     const cart = await prisma.cart.findUnique({
       where: { buyerId: buyerId.toString() },
     });
-    if (!cart) return res.status(400).json({ error: "Cart not found" });
+    if (!cart) {
+      // Not an error, just an empty cart. Send a 200.
+      return res.status(200).json({ cartItems: [] }); 
+    }
 
     const cartItems = await prisma.cartItem.findMany({
       where: { cartId: cart.cartId },
@@ -75,8 +78,16 @@ cartRouter.post("/addItem", async (req, res) => {
       return res
         .status(400)
         .json({ error: "Product ID/Quantity/BuyerID not provided" });
+     
+    const buyerExists = await prisma.buyer.findUnique({
+      where: { buyer_id: buyerId },
+    });
 
-    const product = await prisma.product.findUnique({ where: { productId } });
+    if (!buyerExists) {
+      return res.status(400).json({ error: "Buyer does not exist in database" });
+    }
+
+    const product = await prisma.product.findUnique({ where: { productId:productId } });
     if (!product)
       return res.status(400).json({ error: "Product does not exist" });
     if (product.availableQuantity < quantity)
@@ -132,7 +143,7 @@ cartRouter.patch("/updateQuantity", async (req, res) => {
     if (!cartItem)
       return res.status(400).json({ error: "Cart item not found" });
 
-    const product = await prisma.product.findUnique({ where: { productId } });
+    const product = await prisma.product.findUnique({ where: { productId:productId } });
     if (!product)
       return res.status(400).json({ error: "Product does not exist" });
 
