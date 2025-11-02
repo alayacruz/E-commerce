@@ -3,20 +3,50 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, CreditCard, Truck } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 
+// Helper function to get shipping info from localStorage
+const getInitialShippingInfo = () => {
+  const storedUser = localStorage.getItem('user');
+  const defaults = {
+    fullName: '',
+    address: '',
+    city: '',
+    zipCode: '',
+    phone: ''
+  };
+
+  if (storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      const firstAddress = (parsedUser.addresses && parsedUser.addresses.length > 0)
+        ? parsedUser.addresses[0]
+        : {};
+      const firstPhone = (parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0)
+        ? parsedUser.phoneNumbers[0]
+        : '';
+
+      return {
+        fullName: parsedUser.username || '',
+        address: firstAddress.street || '',
+        city: firstAddress.city || '',
+        zipCode: firstAddress.pin || '',
+        phone: firstPhone || ''
+      };
+    } catch (e) {
+      console.error("Failed to parse user data for shipping", e);
+      return defaults;
+    }
+  }
+  return defaults;
+};
+
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { cartItems, getTotalPrice, clearCart } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('cod');
 
-  const [shippingInfo, setShippingInfo] = useState({
-    fullName: 'John Doe',
-    address: '123 Main Street',
-    city: 'New York',
-    zipCode: '10001',
-    phone: '+1 (555) 123-4567'
-  });
-
+  const [shippingInfo, setShippingInfo] = useState(getInitialShippingInfo);
+  
   const deliveryFee = 15;
   const discount = getTotalPrice() > 200 ? 20 : 0;
   const finalTotal = getTotalPrice() + deliveryFee - discount;

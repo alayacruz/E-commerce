@@ -236,7 +236,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
         const errData = await response.json();
         throw new Error(errData.error || 'Failed to save product');
       }
-
+        
       alert(`Product ${isEditing ? 'updated' : 'saved'} successfully!`);
       onNavigate('products');
 
