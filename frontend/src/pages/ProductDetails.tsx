@@ -44,15 +44,12 @@ const ProductDetails: React.FC = () => {
   const [showAddedFeedback, setShowAddedFeedback] = useState(false);
   const { addToCart } = useCart();
 
-
   // --- 1. STATE FOR ALL FETCHED DATA ---
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [similarProducts, setSimilarProducts] = useState<SimilarProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-
 
   // --- 2. EFFECT TO FETCH DATA ON LOAD ---
   useEffect(() => {
@@ -105,23 +102,19 @@ const ProductDetails: React.FC = () => {
     fetchData();
   }, [id]);
 
-const handleAddToCart = async () => { // 1. Make the function async
+  const handleAddToCart = () => {
     if (!product) return;
-
-    try {
-      // 2. Call addToCart ONCE with the correct arguments
-      console.log("args are: ", product, quantity);
-      await addToCart(product.id, quantity);
-
-      // 3. Show feedback only after the 'await' is successful
-      setShowAddedFeedback(true);
-      setTimeout(() => setShowAddedFeedback(false), 3000);
-
-    } catch (error) {
-      console.error("Failed to add item to cart:", error);
-      // Optionally, you could set an error state here
-      // to show the user it failed.
+    
+    for (let i = 0; i < quantity; i++) {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.imageUrls[0] // Use first image
+      });
     }
+    setShowAddedFeedback(true);
+    setTimeout(() => setShowAddedFeedback(false), 3000);
   };
 
   // --- 4. LOADING STATE ---
