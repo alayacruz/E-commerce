@@ -1,24 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import {
-  User,
-  Package,
-  MapPin,
-  CreditCard,
-  Settings,
-  CreditCard as Edit3,
-  Save,
-  X,
-  Eye,
-  Calendar,
-  Star,
-} from "lucide-react";
+import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Eye, Calendar } from 'lucide-react';
 
 interface StoredUser {
   username: string;
   email: string;
   phoneNumbers: string[];
   addresses: StoredAddress[];
+  dateJoined: string;
 }
 
 interface StoredAddress {
@@ -44,11 +32,12 @@ interface ComponentAddress {
 const UserProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
+
   const [userInfo, setUserInfo] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    dateJoined: "2023-01-15",
+    name: "",
+    email: "",
+    phone: "",
+    dateJoined: "",
   });
 
   const [addresses, setAddresses] = useState<ComponentAddress[]>([]);
@@ -59,13 +48,14 @@ const UserProfile: React.FC = () => {
         const parsedUser: StoredUser = JSON.parse(storedUserString);
 
         setUserInfo((prevInfo) => ({
-          ...prevInfo,
-          name: parsedUser.username || prevInfo.name,
-          email: parsedUser.email || prevInfo.email,
+          ...prevInfo, 
+          name: parsedUser.username || "", 
+          email: parsedUser.email || "", 
           phone:
-            parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
+            (parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
               ? parsedUser.phoneNumbers[0]
-              : prevInfo.phone,
+              : ""),
+          dateJoined: parsedUser.dateJoined || "",
         }));
 
         if (parsedUser.addresses && parsedUser.addresses.length > 0) {
@@ -73,14 +63,14 @@ const UserProfile: React.FC = () => {
             (addr, index) => ({
               id: addr.address_id,
               type: "Home",
-              name: parsedUser.username,
+              name: parsedUser.username || "User", 
               address: addr.street,
               city: addr.city,
               zipCode: addr.pin,
               phone:
-                parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
+                (parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
                   ? parsedUser.phoneNumbers[0]
-                  : "",
+                  : ""),
               isDefault: index === 0,
             })
           );
@@ -89,6 +79,8 @@ const UserProfile: React.FC = () => {
       } catch (e) {
         console.error("Failed to parse user data from localStorage", e);
       }
+    } else {
+      console.warn("No user found in localStorage.");
     }
   }, []);
 
@@ -122,35 +114,90 @@ const UserProfile: React.FC = () => {
     },
   ];
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setIsEditing(false);
+    
+    const updatedUserInfo = {
+      username: userInfo.name,
+      email: userInfo.email,
+      phoneNumbers: [userInfo.phone],
+    };
+    
     try {
-      const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You are not logged in.');
+        return;
+      }
 
-      const updatedUser = {
-        ...storedUser,
-        username: userInfo.name,
-        email: userInfo.email,
-        phoneNumbers: [userInfo.phone],
-      };
+      const response = await fetch('http://localhost:3000/auth/profile', { 
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedUserInfo)
+      });
 
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      console.log("Profile updated and saved to localStorage:", updatedUser);
+      if (!response.ok) {
+        throw new Error('Failed to update profile on the server.');
+      }
+
+      const savedUser = await response.json(); 
+      
+      // Update localStorage with the server-confirmed data
+      localStorage.setItem("user", JSON.stringify(savedUser));
+      
+      // Update the state with the new 'dateJoined' (in case it was missing)
+      setUserInfo(prev => ({
+        ...prev,
+        name: savedUser.username,
+        email: savedUser.email,
+        phone: savedUser.phoneNumbers[0] || "",
+        dateJoined: savedUser.createdAt || prev.dateJoined
+      }));
+
+      console.log("Profile updated and saved:", savedUser);
     } catch (e) {
-      console.error("Failed to save data to localStorage", e);
+      console.error("Failed to save data:", e);
+      alert('Failed to save profile. Please try again.');
+    }
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+
+      console.log("User logged out successfully");
+      window.location.href = '/';
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  const formatJoinedDate = (dateString: string) => {
+    if (!dateString) {
+      return "Not set"; // Fallback if date is missing
+    }
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return "Invalid Date";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Delivered":
-        return "text-green-600 bg-green-50";
-      case "In Transit":
-        return "text-blue-600 bg-blue-50";
-      case "Processing":
-        return "text-orange-600 bg-orange-50";
-      default:
-        return "text-gray-600 bg-gray-50";
+      case 'Delivered': return 'text-green-600 bg-green-50';
+      case 'In Transit': return 'text-blue-600 bg-blue-50';
+      case 'Processing': return 'text-orange-600 bg-orange-50';
+      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -182,7 +229,7 @@ const UserProfile: React.FC = () => {
                   <User className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {userInfo.name}
+                  {userInfo.name || "User"}
                 </h3>
                 <p className="text-gray-600 text-sm">{userInfo.email}</p>
               </div>
@@ -213,12 +260,10 @@ const UserProfile: React.FC = () => {
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Profile Tab */}
-            {activeTab === "profile" && (
+            {activeTab === 'profile' && (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Profile Information
-                  </h2>
+                  <h2 className="text-xl font-bold text-gray-900">Profile Information</h2>
                   {!isEditing ? (
                     <button
                       onClick={() => setIsEditing(true)}
@@ -262,7 +307,7 @@ const UserProfile: React.FC = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{userInfo.name}</p>
+                      <p className="text-gray-900 py-2">{userInfo.name || "User"}</p>
                     )}
                   </div>
 
@@ -280,7 +325,7 @@ const UserProfile: React.FC = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{userInfo.email}</p>
+                      <p className="text-gray-900 py-2">{userInfo.email || "User email"}</p>
                     )}
                   </div>
 
@@ -307,14 +352,7 @@ const UserProfile: React.FC = () => {
                       Member Since
                     </label>
                     <p className="text-gray-900 py-2">
-                      {new Date(userInfo.dateJoined).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )}
+                      {formatJoinedDate(userInfo.dateJoined)}
                     </p>
                   </div>
                 </div>
@@ -497,12 +535,15 @@ const UserProfile: React.FC = () => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                       Account Actions
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-3 sm:space-y-0 sm:space-x-3 flex flex-wrap">
                       <button className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Change Password
                       </button>
                       <button className="w-full sm:w-auto px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors ml-0 sm:ml-3">
                         Delete Account
+                      </button>
+                      <button onClick={handleLogout} className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
+                        Logout
                       </button>
                     </div>
                   </div>

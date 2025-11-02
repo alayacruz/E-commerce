@@ -1,7 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Heart, Share2, ShoppingCart, Minus, Plus, Check, ArrowLeft } from 'lucide-react';
+import { Star, Heart, Share2, ShoppingCart, Minus, Plus, Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+
+// Define types for our fetched data
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  imageUrls: string[]; // This is an array of Cloudinary URLs
+  rating: number;
+  reviews: number; // This is the review count
+  description: string;
+  features: string[];
+  specifications: Record<string, string>;
+  inStock: boolean;
+  category: string;
+}
+
+interface Review {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  comment: string;
+  helpful: number;
+}
+
+interface SimilarProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string; // This is a single Cloudinary URL
+  rating: number;
+}
 
 const ProductDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,106 +44,118 @@ const ProductDetails: React.FC = () => {
   const [showAddedFeedback, setShowAddedFeedback] = useState(false);
   const { addToCart } = useCart();
 
-  // Mock product data
-  const product = {
-    id: parseInt(id || '1'),
-    name: 'Wireless Bluetooth Headphones',
-    price: 199,
-    originalPrice: 299,
-    images: [
-      'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/3394651/pexels-photo-3394651.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/3394652/pexels-photo-3394652.jpeg?auto=compress&cs=tinysrgb&w=800',
-    ],
-    rating: 4.5,
-    reviews: 1234,
-    description: 'Experience premium sound quality with our wireless Bluetooth headphones. Featuring advanced noise cancellation technology, 30-hour battery life, and comfortable over-ear design perfect for long listening sessions.',
-    features: [
-      'Active Noise Cancellation',
-      '30-hour battery life',
-      'Quick charge: 10 minutes = 3 hours playback',
-      'Bluetooth 5.0 connectivity',
-      'Comfortable over-ear design',
-      'Built-in microphone for calls',
-      'Foldable design for portability'
-    ],
-    specifications: {
-      'Driver Size': '40mm',
-      'Frequency Response': '20Hz - 20kHz',
-      'Impedance': '32 Ohm',
-      'Weight': '250g',
-      'Connectivity': 'Bluetooth 5.0, 3.5mm jack',
-      'Battery': 'Li-ion 800mAh',
-      'Charging': 'USB-C'
-    },
-    inStock: true,
-    category: 'Electronics'
-  };
+  // --- 1. STATE FOR ALL FETCHED DATA ---
+  const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [similarProducts, setSimilarProducts] = useState<SimilarProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const reviews = [
-    {
-      id: 1,
-      author: 'John D.',
-      rating: 5,
-      date: '2024-01-15',
-      comment: 'Amazing sound quality and comfort. The noise cancellation works perfectly for my daily commute.',
-      helpful: 24
-    },
-    {
-      id: 2,
-      author: 'Sarah M.',
-      rating: 4,
-      date: '2024-01-10',
-      comment: 'Great headphones overall. Battery life is excellent. Only minor issue is they can feel a bit heavy after extended use.',
-      helpful: 18
-    },
-    {
-      id: 3,
-      author: 'Mike R.',
-      rating: 5,
-      date: '2024-01-05',
-      comment: 'Best purchase I\'ve made this year. Sound is crystal clear and the build quality is premium.',
-      helpful: 31
+  // --- 2. EFFECT TO FETCH DATA ON LOAD ---
+  useEffect(() => {
+    if (!id) {
+      setError("No product ID specified.");
+      setLoading(false);
+      return;
     }
-  ];
 
-  const similarProducts = [
-    {
-      id: 2,
-      name: 'Gaming Headset Pro',
-      price: 149,
-      image: 'https://images.pexels.com/photos/3945667/pexels-photo-3945667.jpeg?auto=compress&cs=tinysrgb&w=400',
-      rating: 4.3
-    },
-    {
-      id: 3,
-      name: 'Wireless Earbuds',
-      price: 99,
-      image: 'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=400',
-      rating: 4.7
-    },
-    {
-      id: 4,
-      name: 'Studio Monitor Headphones',
-      price: 299,
-      image: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=400',
-      rating: 4.8
-    }
-  ];
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // --- 3. FETCH ALL THREE API ENDPOINTS ---
+        const [productRes, reviewsRes, similarRes] = await Promise.all([
+          fetch(`http://localhost:3000/products/${id}`),
+          fetch(`http://localhost:3000/products/${id}/reviews`),
+          fetch(`http://localhost:3000/products/${id}/similar`)
+        ]);
+
+        if (!productRes.ok) {
+          throw new Error('Product not found.');
+        }
+
+        const productData = await productRes.json();
+        setProduct(productData);
+
+        if (reviewsRes.ok) {
+          const reviewsData = await reviewsRes.json();
+          setReviews(reviewsData);
+        } else {
+          console.warn("Could not fetch reviews.");
+        }
+
+        if (similarRes.ok) {
+          const similarData = await similarRes.json();
+          setSimilarProducts(similarData);
+        } else {
+          console.warn("Could not fetch similar products.");
+        }
+        
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   const handleAddToCart = () => {
+    if (!product) return;
+    
     for (let i = 0; i < quantity; i++) {
       addToCart({
         id: product.id,
         name: product.name,
         price: product.price,
-        image: product.images[0]
+        image: product.imageUrls[0] // Use first image
       });
     }
     setShowAddedFeedback(true);
     setTimeout(() => setShowAddedFeedback(false), 3000);
   };
 
+  // --- 4. LOADING STATE ---
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 flex justify-center items-center">
+        <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // --- 5. ERROR STATE ---
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-700 mb-6">{error}</p>
+          <Link to="/products" className="text-blue-600 hover:text-blue-700">
+            &larr; Back to Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 6. NOT FOUND STATE ---
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
+          <Link to="/products" className="text-blue-600 hover:text-blue-700">
+            &larr; Back to Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 7. SUCCESS STATE (Render Page with fetched data) ---
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,13 +182,13 @@ const ProductDetails: React.FC = () => {
           <div className="space-y-4">
             <div className="aspect-square bg-white rounded-2xl overflow-hidden shadow-sm">
               <img
-                src={product.images[selectedImage]}
+                src={product.imageUrls[selectedImage] || 'https://via.placeholder.com/800?text=No+Image'}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {product.images.map((image, index) => (
+              {product.imageUrls.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
@@ -152,7 +197,7 @@ const ProductDetails: React.FC = () => {
                   }`}
                 >
                   <img
-                    src={image}
+                    src={image} // This is correct
                     alt={`${product.name} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -180,13 +225,15 @@ const ProductDetails: React.FC = () => {
                 <span className="text-gray-400">|</span>
                 <span className="text-gray-600">{product.reviews} reviews</span>
                 <span className="text-gray-400">|</span>
-                <span className="text-green-600 font-medium">In Stock</span>
+                <span className={product.inStock ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                  {product.inStock ? 'In Stock' : 'Out of Stock'}
+                </span>
               </div>
             </div>
 
             {/* Price */}
             <div className="flex items-center space-x-4">
-              <span className="text-3xl font-bold text-gray-900">${product.price}</span>
+              <span className="text-3xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
               {product.originalPrice && (
                 <>
                   <span className="text-xl text-gray-400 line-through">${product.originalPrice}</span>
@@ -237,10 +284,11 @@ const ProductDetails: React.FC = () => {
               <div className="flex space-x-4">
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center"
+                  disabled={!product.inStock}
+                  className="flex-1 bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
-                  Add to Cart
+                  {product.inStock ? 'Add to Cart' : 'Out of Stock'}
                 </button>
                 <button
                   onClick={() => setIsWishlisted(!isWishlisted)}
@@ -275,7 +323,6 @@ const ProductDetails: React.FC = () => {
                 <button className="px-6 py-4 text-blue-600 border-b-2 border-blue-600 font-medium">
                   Specifications
                 </button>
-              
               </div>
             </div>
             <div className="p-6">
@@ -283,7 +330,7 @@ const ProductDetails: React.FC = () => {
                 {Object.entries(product.specifications).map(([key, value]) => (
                   <div key={key} className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">{key}</span>
-                    <span className="font-medium text-gray-900">{value}</span>
+                    <span className="font-medium text-gray-900">{String(value)}</span>
                   </div>
                 ))}
               </div>
@@ -296,6 +343,7 @@ const ProductDetails: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
             <div className="space-y-6">
+              {reviews.length === 0 && <p className="text-gray-600">No reviews yet for this product.</p>}
               {reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                   <div className="flex items-center justify-between mb-2">
@@ -328,6 +376,7 @@ const ProductDetails: React.FC = () => {
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {similarProducts.length === 0 && <p className="text-gray-600">No similar products found.</p>}
             {similarProducts.map((similarProduct) => (
               <Link
                 key={similarProduct.id}
@@ -336,7 +385,7 @@ const ProductDetails: React.FC = () => {
               >
                 <div className="aspect-square overflow-hidden">
                   <img
-                    src={similarProduct.image}
+                    src={similarProduct.image || 'https://via.placeholder.com/400?text=No+Image'}
                     alt={similarProduct.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -346,7 +395,7 @@ const ProductDetails: React.FC = () => {
                     {similarProduct.name}
                   </h3>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">${similarProduct.price}</span>
+                    <span className="text-lg font-bold text-gray-900">${similarProduct.price.toFixed(2)}</span>
                     <div className="flex items-center">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                       <span className="text-sm text-gray-600 ml-1">{similarProduct.rating}</span>

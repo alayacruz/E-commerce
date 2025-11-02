@@ -2,9 +2,10 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import { Eye, EyeOff, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import LoginHero from "../public/login_hero.jpg";
+import {useAuth} from "../contexts/AuthContext";
+import LoginHero from "../public/mannobg.png";
+import login_hero from "../public/bg.png";
 
-// Updated FormData to include all potential fields
 interface FormData {
   email: string;
   password: string;
@@ -20,6 +21,7 @@ interface FormData {
 
 const LogIn: React.FC = () => {
   const navigate = useNavigate();
+  const { saveAuth } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
   const [isSeller, setIsSeller] = useState(false);
@@ -65,6 +67,21 @@ const LogIn: React.FC = () => {
     if (!isSeller && (!formData.gender || !formData.dob)) {
       toast.error("Gender and Date of Birth are required for buyers.", { style: toastStyle });
       return;
+    }
+    if (formData.dob) {
+      const birthDate = new Date(formData.dob);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const hasBirthdayPassed =
+        today.getMonth() > birthDate.getMonth() ||
+        (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+
+      const exactAge = hasBirthdayPassed ? age : age - 1;
+
+      if (exactAge < 15) {
+        toast.error("You must be at least 15 years old to sign up.", { style: toastStyle });
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -128,10 +145,8 @@ const LogIn: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("token", data.token);
-        console.log(data.token);
-        console.log("HI IM WORKGFIN");
-        localStorage.setItem("user", JSON.stringify(data.userInfo));
+        saveAuth(data.token, data.userInfo);
+        localStorage.setItem('user', JSON.stringify(data.userInfo));
         toast.success("Login successful!", { style: toastStyle });
         navigate(isSeller ? "/seller/home" : "/home");
       } else {
@@ -173,49 +188,41 @@ const LogIn: React.FC = () => {
   };
 
   return (
-    <section className="flex flex-col md:flex-row items-center overflow-hidden justify-center min-h-screen bg-white text-black">
+    <section className="flex flex-col md:flex-row items-center overflow-hidden justify-center min-h-screen bg-cover bg-center relative text-black"
+    style={{ backgroundImage: `url(${login_hero})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', height: '100vh' }}>
       <Toaster position="bottom-right" reverseOrder={false} />
+      <div className="relative z-10 flex flex-col md:flex-row items-center justify-center w-full">
+        {/* Left side - form */}
+        <div className="relative z-10 flex flex-col justify-center md:w-1/2 w-full h-screen  pl-20 md:pl-32 pr-10 md:pr-0 ml-50">
+          <div className="text-4xl font-bold text-center mb-6 text-white flex justify-center gap-4 items-center">
+            <ShoppingCart size={36} />
+            Shop Hub
+          </div>
 
-      {/* Left side - image */}
-      <div className="hidden md:block md:w-1/2 h-screen">
-        <img
-          src={LoginHero}
-          alt="Login Hero"
-          className="object-cover w-full h-full"
-        />
-      </div>
-
-      {/* Right side - form */}
-      <div className="flex flex-col justify-center md:w-1/2 w-full md:p-4">
-        <div className="text-4xl font-bold text-center mb-6 text-blue-500 flex justify-center gap-4 items-center">
-          <ShoppingCart size={36} />
-          Shop Hub
-        </div>
-
-        {/* Seller/Buyer Toggle */}
-        <div className="flex justify-center bg-blue-100 rounded-full p-1 mb-6 w-3/4 mx-auto">
-          <button
-            type="button"
-            onClick={() => setIsSeller(false)}
-            className={`w-1/2 py-2 rounded-full font-semibold transition ${!isSeller ? "bg-blue-500 text-white" : "text-gray-600"
-              }`}
-          >
-            Buyer
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSeller(true)}
-            className={`w-1/2 py-2 rounded-full font-semibold transition ${isSeller ? "bg-blue-500 text-white" : "text-gray-600"
-              }`}
-          >
-            Seller
-          </button>
-        </div>
+          {/* Seller/Buyer Toggle */}
+          <div className="flex justify-center bg-blue-100 rounded-full p-1 mb-6 w-3/4 mx-auto">
+            <button
+              type="button"
+              onClick={() => setIsSeller(false)}
+              className={`w-1/2 py-2 rounded-full font-semibold transition ${!isSeller ? "bg-blue-600 text-white" : "text-gray-600"
+                }`}
+            >
+              Buyer
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSeller(true)}
+              className={`w-1/2 py-2 rounded-full font-semibold transition ${isSeller ? "bg-blue-600 text-white" : "text-gray-600"
+                }`}
+            >
+              Seller
+            </button>
+          </div>
 
         <h1 className="text-2xl font-semibold text-center mb-2">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h1>
-        <p className="text-center text-gray-400 mb-5">
+        <p className="text-center text-white mb-5">
           {isLogin
             ? `Log in to your ${isSeller ? "Seller" : "Buyer"} account`
             : `Sign up to start as a ${isSeller ? "Seller" : "Buyer"}`}
@@ -251,7 +258,7 @@ const LogIn: React.FC = () => {
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
 
               <input
@@ -261,7 +268,7 @@ const LogIn: React.FC = () => {
                 value={formData.address}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
             </>
           )}
@@ -285,7 +292,7 @@ const LogIn: React.FC = () => {
                   value={formData.gender}
                   onChange={handleSelectChange}
                   required
-                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
+                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-gray-500"
                 >
                   <option value="" disabled>Select Gender</option>
                   <option value="male">Male</option>
@@ -353,7 +360,7 @@ const LogIn: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
             />
             <button
               type="button"
@@ -374,7 +381,7 @@ const LogIn: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
               <button
                 type="button"
@@ -390,7 +397,7 @@ const LogIn: React.FC = () => {
             <div className="text-right">
               <a
                 href="#"
-                className="text-sm text-blue-500 hover:text-blue-600"
+                className="text-sm text-black hover:text-blue-600"
                 onClick={(e) => e.preventDefault()}
               >
                 Forgot your password?
@@ -401,7 +408,7 @@ const LogIn: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition disabled:bg-blue-300"
+            className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-600 transition disabled:bg-blue-300"
           >
             {isLoading ? "Processing..." : (isLogin
               ? `Log In as ${isSeller ? "Seller" : "Buyer"}`
@@ -409,18 +416,27 @@ const LogIn: React.FC = () => {
           </button>
         </form>
 
-        <p className="text-center mt-4 text-gray-500">
+        <p className="text-center mt-4 text-black">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={toggleAuthMode}
-            className="text-blue-500 hover:underline font-semibold"
+            className="text-blue-600 hover:underline font-semibold"
           >
             {isLogin ? "Sign up" : "Log in"}
           </button>
         </p>
       </div>
 
+{/* Right side - image */}
+        <div className="hidden md:block md:w-1/2 h-screen p-0 m-0 relative">
+          <img
+            src={LoginHero}
+            alt="Login Hero"
+            className="object-cover w-full h-full translate-x-16"
+          />
+        </div>
+      </div>
       {isLoading && (
         <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
           <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>

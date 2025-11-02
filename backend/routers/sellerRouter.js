@@ -60,7 +60,7 @@ sellerRouter.use(isSeller);
 // CREATE PRODUCT
 sellerRouter.post("/products", upload, async (req, res) => {
   try {
-    const { name, description, price, availableQuantity, categoryId } =
+    const { name, description, price, availableQuantity, categoryId, originalPrice, features, specifications} =
       req.body;
     const sellerId = req.user?.userId;
 
@@ -85,15 +85,9 @@ sellerRouter.post("/products", upload, async (req, res) => {
     const numPrice = parseFloat(price);
     const numAvailableQuantity = parseInt(availableQuantity, 10);
     const numCategoryId = parseInt(categoryId, 10);
-
-    if (
-      isNaN(numPrice) ||
-      isNaN(numAvailableQuantity) ||
-      isNaN(numCategoryId)
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Invalid data types for price, stock, or category." });
+    
+    if (isNaN(numPrice) || isNaN(numAvailableQuantity) || isNaN(numCategoryId)) {
+      return res.status(400).json({ error: "Invalid data types for price, stock, or category." });
     }
 
     const status =
@@ -111,11 +105,14 @@ sellerRouter.post("/products", upload, async (req, res) => {
         name,
         description,
         price: numPrice,
+        originalPrice: numOriginalPrice,
         availableQuantity: numAvailableQuantity,
         status,
         seller_id: sellerId,
         categoryId: numCategoryId,
-        imageUrls: imageUrls, //save cloudinary urls
+        imageUrls: imageUrls,
+        features: featuresArray,
+        specifications: specsObject,
       },
     });
     await elasticClient.index({
@@ -158,13 +155,138 @@ sellerRouter.get("/products", async (req, res) => {
   }
 });
 
-// UPDATE PRODUCTS
+// GET A SINGLE PRODUCT (FOR EDITING)
+sellerRouter.get("/products/:id", async (req, res) => {
+  const { id } = req.params;
+  const sellerId = req.user?.userId;
+
+  if (!sellerId) {
+    return res.status(401).json({ error: "Authentication token is missing." });
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: {
+        productId: id,
+        seller_id: sellerId, // Ensures a seller can only get their own product
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found or you do not own this product." });
+    }
+
+    // The frontend expects this exact data structure
+    const productData = {
+      name: product.name,
+      categoryId: product.categoryId,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      availableQuantity: product.availableQuantity,
+      description: product.description,
+      features: product.features,
+      specifications: product.specifications,
+      imageUrls: product.imageUrls,
+    };
+
+    res.json(productData);
+
+  } catch (e) {
+    console.error("Failed to fetch single product:", e);
+    res.status(500).json({ error: "Failed to fetch product data." });
+  }
+});
+
+// seller stats displayed on dashboard
+sellerRouter.get("/stats", async (req, res) => {
+  const sellerId = req.user?.userId;
+  if (!sellerId) {
+    return res.status(401).json({ error: "Authentication token is missing." });
+  }
+
+  try {
+    // 1. Get total income from completed orders
+    const incomeResult = await prisma.order.aggregate({
+      _sum: {
+        amount: true,
+      },
+      where: {
+        items: {
+          some: {
+            product: {
+              seller_id: sellerId,
+            },
+          },
+        },
+        status: "Completed", 
+      },
+    });
+
+    // 2. Get total products sold
+    const soldResult = await prisma.orderItem.aggregate({
+      _sum: {
+        quantity: true,
+      },
+      where: {
+        product: {
+          seller_id: sellerId,
+        },
+        order: {
+          status: "Completed",
+        },
+      },
+    });
+
+    // 3. Get total product reviews
+    const reviewsResult = await prisma.review.count({
+      where: {
+        product: {
+          seller_id: sellerId,
+        },
+      },
+    });
+
+    // 4. Get total cancelled orders
+    const cancelledResult = await prisma.order.count({
+      where: {
+        items: {
+          some: {
+            product: {
+              seller_id: sellerId,
+            },
+          },
+        },
+        status: "Cancelled", 
+      },
+    });
+
+    res.json({
+      income: incomeResult._sum.amount || 0,
+      sold: soldResult._sum.quantity || 0,
+      reviews: reviewsResult || 0,
+      cancelled: cancelledResult || 0,
+    });
+    
+  } catch (e) {
+    console.error("Failed to fetch seller stats:", e);
+    res.status(500).json({ error: "Failed to fetch seller stats" });
+  }
+});
+
+const getPublicIdFromUrl = (url) => {
+  const parts = url.split('/');
+  const publicIdWithExtension = parts.slice(-2).join('/'); 
+  return publicIdWithExtension.split('.')[0]; 
+};
+
+// UPDATE PRODUCTS (REPLACED)
 sellerRouter.put("/products/:id", upload, async (req, res) => {
   try {
     const { name, description, price, availableQuantity } = req.body;
-    const sellerId = req.user?.userId;
+    const sellerId = req.user?.userId; 
     const { id: productId } = req.params;
 
+    // 2. Find the product first (to get old images)
     const product = await prisma.product.findUnique({
       where: { productId: productId },
     });
@@ -172,28 +294,28 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     if (!product || product.seller_id !== sellerId)
       return res.status(404).json({ error: "Product not found" });
 
+    // 3. Prepare all the data for update
     const updateData = {};
 
     if (name) updateData.name = name;
     if (description) updateData.description = description;
     if (price) updateData.price = parseFloat(price);
-
+    
     if (availableQuantity) {
       const numAvailableQuantity = parseInt(availableQuantity, 10);
       updateData.availableQuantity = numAvailableQuantity;
-      updateData.status =
-        numAvailableQuantity === 0
-          ? "Out of Stock"
-          : numAvailableQuantity < 5
-          ? "A Few Left"
-          : "In Stock";
+      updateData.status = numAvailableQuantity === 0
+    ? "Out of Stock"
+    : numAvailableQuantity < 5
+    ? "A Few Left"
+    : "In Stock";
     }
 
     if (req.files && req.files.length > 0) {
       updateData.imageUrls = req.files.map((file) => file.path);
     }
 
-    const updatedProduct = await prisma.product.update({
+    const updatedProduct = await prisma.product.update({ 
       where: { productId: productId },
       data: updateData,
     });
@@ -234,7 +356,25 @@ sellerRouter.delete("/products/:productId", async (req, res) => {
 
     // delete image corresponding to the product from cloudinary
     const imageUrls = product.imageUrls || [];
-    await Promise.all(imageUrls.map((url) => cloudinary.uploader.destroy(url)));
+    const getPublicIdFromUrl = (url) => {
+       const parts = url.split('/');
+       const publicIdWithExtension = parts.slice(-2).join('/'); 
+       return publicIdWithExtension.split('.')[0]; 
+ };
+
+    try {
+     await Promise.all(
+   imageUrls.map((url) => {
+   const publicId = getPublicIdFromUrl(url);
+   if (publicId) {
+    return cloudinary.uploader.destroy(publicId);
+   }
+    return Promise.resolve();
+    })
+    );
+    } catch (cloudinaryError) {
+    console.error("Cloudinary delete error:", cloudinaryError);
+}
 
     await prisma.product.update({
       where: { productId: productId },
