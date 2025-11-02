@@ -29,6 +29,8 @@ const createIndex = async () => {
               productDesc: { type: "text" },
               availableQuantity: { type: "integer" },
               price: { type: "float" },
+              features: { type: "text" },
+              specs: { type: "text" },
             },
           },
         },
@@ -56,6 +58,8 @@ const indexProducts = async () => {
           productDesc: e.description,
           availableQuantity: e.availableQuantity,
           price: e.price,
+          features: e.features,
+          specs: e.specifications,
         },
       });
       return doc;
@@ -101,7 +105,7 @@ searchRouter.post("/", async (req, res) => {
       query: {
         multi_match: {
           query: searchStr,
-          fields: ["productName", "productDesc"],
+          fields: ["productName", "productDesc", "features", "specs"],
           type: "best_fields",
         },
       },
@@ -150,4 +154,6 @@ export default searchRouter;
     imageUrls: string[];
     categoryId: number | null;
     isArchived: boolean;
+      features          String[]
+  specifications    Json?
 }[] */

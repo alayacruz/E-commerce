@@ -60,8 +60,16 @@ sellerRouter.use(isSeller);
 // CREATE PRODUCT
 sellerRouter.post("/products", upload, async (req, res) => {
   try {
-    const { name, description, price, availableQuantity, categoryId, originalPrice, features, specifications} =
-      req.body;
+    const {
+      name,
+      description,
+      price,
+      availableQuantity,
+      categoryId,
+      originalPrice,
+      features,
+      specifications,
+    } = req.body;
     const sellerId = req.user?.userId;
 
     if (!sellerId) {
@@ -85,9 +93,15 @@ sellerRouter.post("/products", upload, async (req, res) => {
     const numPrice = parseFloat(price);
     const numAvailableQuantity = parseInt(availableQuantity, 10);
     const numCategoryId = parseInt(categoryId, 10);
-    
-    if (isNaN(numPrice) || isNaN(numAvailableQuantity) || isNaN(numCategoryId)) {
-      return res.status(400).json({ error: "Invalid data types for price, stock, or category." });
+
+    if (
+      isNaN(numPrice) ||
+      isNaN(numAvailableQuantity) ||
+      isNaN(numCategoryId)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Invalid data types for price, stock, or category." });
     }
 
     const status =
@@ -123,6 +137,8 @@ sellerRouter.post("/products", upload, async (req, res) => {
         productDesc: newProduct.description,
         availableQuantity: newProduct.availableQuantity,
         price: newProduct.price,
+        features: newProduct.features,
+        specs: newProduct.specifications,
       },
     });
     res.status(201).json(newProduct);
@@ -173,7 +189,9 @@ sellerRouter.get("/products/:id", async (req, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ error: "Product not found or you do not own this product." });
+      return res
+        .status(404)
+        .json({ error: "Product not found or you do not own this product." });
     }
 
     // The frontend expects this exact data structure
@@ -190,7 +208,6 @@ sellerRouter.get("/products/:id", async (req, res) => {
     };
 
     res.json(productData);
-
   } catch (e) {
     console.error("Failed to fetch single product:", e);
     res.status(500).json({ error: "Failed to fetch product data." });
@@ -218,7 +235,7 @@ sellerRouter.get("/stats", async (req, res) => {
             },
           },
         },
-        status: "Completed", 
+        status: "Completed",
       },
     });
 
@@ -256,7 +273,7 @@ sellerRouter.get("/stats", async (req, res) => {
             },
           },
         },
-        status: "Cancelled", 
+        status: "Cancelled",
       },
     });
 
@@ -266,7 +283,6 @@ sellerRouter.get("/stats", async (req, res) => {
       reviews: reviewsResult || 0,
       cancelled: cancelledResult || 0,
     });
-    
   } catch (e) {
     console.error("Failed to fetch seller stats:", e);
     res.status(500).json({ error: "Failed to fetch seller stats" });
@@ -274,16 +290,16 @@ sellerRouter.get("/stats", async (req, res) => {
 });
 
 const getPublicIdFromUrl = (url) => {
-  const parts = url.split('/');
-  const publicIdWithExtension = parts.slice(-2).join('/'); 
-  return publicIdWithExtension.split('.')[0]; 
+  const parts = url.split("/");
+  const publicIdWithExtension = parts.slice(-2).join("/");
+  return publicIdWithExtension.split(".")[0];
 };
 
 // UPDATE PRODUCTS (REPLACED)
 sellerRouter.put("/products/:id", upload, async (req, res) => {
   try {
     const { name, description, price, availableQuantity } = req.body;
-    const sellerId = req.user?.userId; 
+    const sellerId = req.user?.userId;
     const { id: productId } = req.params;
 
     // 2. Find the product first (to get old images)
@@ -300,22 +316,23 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     if (name) updateData.name = name;
     if (description) updateData.description = description;
     if (price) updateData.price = parseFloat(price);
-    
+
     if (availableQuantity) {
       const numAvailableQuantity = parseInt(availableQuantity, 10);
       updateData.availableQuantity = numAvailableQuantity;
-      updateData.status = numAvailableQuantity === 0
-    ? "Out of Stock"
-    : numAvailableQuantity < 5
-    ? "A Few Left"
-    : "In Stock";
+      updateData.status =
+        numAvailableQuantity === 0
+          ? "Out of Stock"
+          : numAvailableQuantity < 5
+          ? "A Few Left"
+          : "In Stock";
     }
 
     if (req.files && req.files.length > 0) {
       updateData.imageUrls = req.files.map((file) => file.path);
     }
 
-    const updatedProduct = await prisma.product.update({ 
+    const updatedProduct = await prisma.product.update({
       where: { productId: productId },
       data: updateData,
     });
@@ -328,6 +345,8 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
         productDesc: updatedProduct.description,
         availableQuantity: updatedProduct.availableQuantity,
         price: updatedProduct.price,
+        features: updatedProduct.features,
+        specs: updatedProduct.specifications,
       },
     });
 
@@ -357,24 +376,24 @@ sellerRouter.delete("/products/:productId", async (req, res) => {
     // delete image corresponding to the product from cloudinary
     const imageUrls = product.imageUrls || [];
     const getPublicIdFromUrl = (url) => {
-       const parts = url.split('/');
-       const publicIdWithExtension = parts.slice(-2).join('/'); 
-       return publicIdWithExtension.split('.')[0]; 
- };
+      const parts = url.split("/");
+      const publicIdWithExtension = parts.slice(-2).join("/");
+      return publicIdWithExtension.split(".")[0];
+    };
 
     try {
-     await Promise.all(
-   imageUrls.map((url) => {
-   const publicId = getPublicIdFromUrl(url);
-   if (publicId) {
-    return cloudinary.uploader.destroy(publicId);
-   }
-    return Promise.resolve();
-    })
-    );
+      await Promise.all(
+        imageUrls.map((url) => {
+          const publicId = getPublicIdFromUrl(url);
+          if (publicId) {
+            return cloudinary.uploader.destroy(publicId);
+          }
+          return Promise.resolve();
+        })
+      );
     } catch (cloudinaryError) {
-    console.error("Cloudinary delete error:", cloudinaryError);
-}
+      console.error("Cloudinary delete error:", cloudinaryError);
+    }
 
     await prisma.product.update({
       where: { productId: productId },
