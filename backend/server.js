@@ -20,6 +20,29 @@ app.use(
   })
 );
 
+// import { createClient } from "redis";
+
+// const redisURL =
+//   "rediss://default:XM9A1R1CtCaCh6NL3tVzUfUZCImWNjEA@redis-19222.c246.us-east-1-4.ec2.redns.redis-cloud.com:19222";
+// const client = createClient({
+//   url: redisURL,
+//   // CRITICAL: This enables TLS/SSL encryption, which Redis Cloud requires
+//   socket: {
+//     tls: true,
+//     // Set to true to bypass certificate verification, which might be necessary
+//     // in some development environments, but for production,
+//     // you should ensure proper certificates are used.
+//     rejectUnauthorized: false,
+//   },
+// });
+// client.on("error", (err) => console.log("Redis Client Error", err));
+
+// await client.connect();
+
+// await client.set("foo", "bar");
+// const result = await client.get("foo");
+// console.log(result); // >>> bar
+
 app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/search", searchRouter);
