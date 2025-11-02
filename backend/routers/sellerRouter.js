@@ -298,11 +298,23 @@ const getPublicIdFromUrl = (url) => {
 // UPDATE PRODUCTS (REPLACED)
 sellerRouter.put("/products/:id", upload, async (req, res) => {
   try {
-    const { name, description, price, availableQuantity } = req.body;
+    // --- FIX 1: Destructure ALL fields from the form ---
+    const {
+      name,
+      description,
+      price,
+      availableQuantity,
+      categoryId,
+      originalPrice,
+      features,
+      specifications,
+      existingImageUrls, // This comes from your AddProduct.tsx
+    } = req.body;
+
     const sellerId = req.user?.userId;
     const { id: productId } = req.params;
 
-    // 2. Find the product first (to get old images)
+    // 2. Find the product first (auth check)
     const product = await prisma.product.findUnique({
       where: { productId: productId },
     });
@@ -310,12 +322,20 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     if (!product || product.seller_id !== sellerId)
       return res.status(404).json({ error: "Product not found" });
 
-    // 3. Prepare all the data for update
+    // --- FIX 2: Prepare ALL data for update ---
     const updateData = {};
 
+    // Conditionally add fields to updateData
     if (name) updateData.name = name;
     if (description) updateData.description = description;
     if (price) updateData.price = parseFloat(price);
+
+    // Handle originalPrice (allowing it to be set to null)
+    if (originalPrice !== undefined) {
+      updateData.originalPrice = originalPrice ? parseFloat(originalPrice) : null;
+    }
+
+    if (categoryId) updateData.categoryId = parseInt(categoryId, 10);
 
     if (availableQuantity) {
       const numAvailableQuantity = parseInt(availableQuantity, 10);
@@ -328,25 +348,50 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
           : "In Stock";
     }
 
-    if (req.files && req.files.length > 0) {
-      updateData.imageUrls = req.files.map((file) => file.path);
+    // Handle features
+    if (features) {
+      updateData.features = Array.isArray(features)
+        ? features
+        : [features];
     }
 
+    // Handle specifications
+    if (specifications) {
+      try {
+        updateData.specifications = JSON.parse(specifications);
+      } catch (parseError) {
+        return res.status(400).json({ error: "Invalid specifications format." });
+      }
+    }
+
+    // --- FIX 3: Correctly merge old and new images ---
+    // 'req.files' contains new files just uploaded
+    const newImageFiles = req.files ? req.files.map((file) => file.path) : [];
+    // 'existingImageUrls' is the list of old URLs the user decided to keep
+    const existingImages = Array.isArray(existingImageUrls)
+      ? existingImageUrls
+      : existingImageUrls ? [existingImageUrls] : [];
+
+    // Combine them to form the new array
+    updateData.imageUrls = [...existingImages, ...newImageFiles];
+
+    // --- Update the product in the database ---
     const updatedProduct = await prisma.product.update({
       where: { productId: productId },
-      data: updateData,
+      data: updateData, // This object now contains ALL fields
     });
 
+    // --- FIX 4: Fix typo and update all fields in Elasticsearch ---
     await elasticClient.update({
       index: "product_index",
-      id: e.productId,
-      document: {
+      id: productId, // Use productId from params, not 'e.productId'
+      doc: {         // Use 'doc' for partial updates
         productName: updatedProduct.name,
         productDesc: updatedProduct.description,
         availableQuantity: updatedProduct.availableQuantity,
         price: updatedProduct.price,
-        features: updatedProduct.features,
-        specs: updatedProduct.specifications,
+        features: updatedProduct.features, // Add updated features
+        specs: updatedProduct.specifications, // Add updated specs
       },
     });
 
