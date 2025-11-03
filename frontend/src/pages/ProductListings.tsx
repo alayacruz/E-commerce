@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Filter, Grid2x2 as Grid, List, Star, ChevronDown, Loader2, Package } from 'lucide-react';
+import { Filter, Grid2x2 as Grid, List, Star, ChevronDown, Loader2, Package, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // Define type for fetched products
 interface Product {
@@ -33,7 +33,7 @@ const ProductListings: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('featured');
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 100000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -42,6 +42,11 @@ const ProductListings: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const PRODUCTS_PER_PAGE = 9;
 
   const categoryUrlParam = searchParams.get('category');
   const searchQuery = searchParams.get('search');
@@ -61,6 +66,10 @@ const ProductListings: React.FC = () => {
     };
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategories, sortBy, priceRange]);
 
   // Effect to set initial category filter from URL
   useEffect(() => {
@@ -88,6 +97,8 @@ const ProductListings: React.FC = () => {
         params.append('priceMin', String(priceRange[0]));
         params.append('priceMax', String(priceRange[1]));
 
+        params.append('page', String(currentPage));
+        params.append('limit', String(PRODUCTS_PER_PAGE));
         // Use the new public product router
         const response = await fetch(`http://localhost:3000/products?${params.toString()}`); 
         if (!response.ok) {
@@ -95,8 +106,9 @@ const ProductListings: React.FC = () => {
         }
         
         const data = await response.json();
-        setProducts(data);
-        
+        setProducts(data.products);
+        setTotalPages(data.totalPages);
+        setTotalProducts(data.totalProducts);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -105,7 +117,7 @@ const ProductListings: React.FC = () => {
     };
     
     fetchProducts();
-  }, [searchQuery, selectedCategories, sortBy, priceRange]);
+  }, [searchQuery, selectedCategories, sortBy, priceRange, currentPage]);
   
 
   const handleCategoryChange = (categoryName: string) => {
@@ -115,6 +127,18 @@ const ProductListings: React.FC = () => {
         : [...prev, categoryName]
     );
   };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -126,7 +150,7 @@ const ProductListings: React.FC = () => {
              searchQuery ? `Search Results for "${searchQuery}"` : 'All Products'}
           </h1>
           <p className="text-gray-600">
-            {loading ? 'Searching...' : `${products.length} products found`}
+            {loading ? 'Searching...' : `${totalProducts} products found`}
           </p>
         </div>
 
@@ -167,7 +191,7 @@ const ProductListings: React.FC = () => {
                   <input
                     type="range"
                     min="0"
-                    max="1000" // You can make this dynamic
+                    max={Math.max(...products.map(p => p.price), 0) || 1000}
                     value={priceRange[1]}
                     onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
                     className="w-full"
@@ -289,14 +313,33 @@ const ProductListings: React.FC = () => {
               </div>
             )}
 
-            {/* Pagination (Hardcoded, as backend doesn't support it yet) */}
-            <div className="flex justify-center items-center space-x-2 mt-12">
-              <button className="px-3 py-2 text-gray-500 hover:text-gray-700">Previous</button>
-              <button className="px-3 py-2 bg-blue-600 text-white rounded">1</button>
-              <button className="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">2</button>
-              <button className="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">3</button>
-              <button className="px-3 py-2 text-gray-500 hover:text-gray-700">Next</button>
-            </div>
+            {/* Pagination */}
+            {!loading && !error && products.length > 0 && (
+              <div className="flex justify-between items-center space-x-2 mt-12 border-t pt-6">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Previous
+                </button>
+                
+                <span className="text-sm text-gray-700">
+                  Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
+                </span>
+                
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            
           </div>
         </div>
       </div>

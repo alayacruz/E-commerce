@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Eye, Calendar } from 'lucide-react';
+import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Calendar } from 'lucide-react';
+import { Link } from "react-router-dom";
 
 interface StoredUser {
   username: string;
@@ -405,8 +406,7 @@ const UserProfile: React.FC = () => {
                             </span>
                           </div>
                           <button className="flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
+                            <Link to={`/products/${order.id}`}>View</Link>
                           </button>
                         </div>
                       </div>

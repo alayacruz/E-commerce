@@ -7,7 +7,8 @@ interface CartItem {
     productId: string;
     name: string;
     price: number;
-    image: string;
+    imageUrls: string[];
+    originalPrice?: number;
   };
 }
 
@@ -36,17 +37,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   const API_URL = 'http://localhost:3000';
-const userString = localStorage.getItem("user"); // 1. Get the string
+  const userString = localStorage.getItem("user"); // 1. Get the string
+  let buyerId: unknown;
 
-    if (!userString) {
-      console.error(" [fetchCart] No user found in localStorage.");
-      setLoading(false);
-      
-    }
-
+  if (userString) {
     const user = JSON.parse(userString); // 2. Parse the string into an object
-    const buyerId = user.userId;         // 3. Now you can access the property
-console.log("buyerId variable is: ", buyerId);
+    buyerId = user.userId;         // 3. Now you can access the property
+    console.log("buyerId variable is: ", buyerId);
+  }else {
+    // User was NOT found, so log error and stop loading
+    console.error(" [CartProvider] No user found in localStorage.");
+    setLoading(false);
+  }
   // -------------------------------
   // FETCH CART FROM BACKEND
   // -------------------------------
@@ -54,11 +56,12 @@ console.log("buyerId variable is: ", buyerId);
     console.log(" [fetchCart] Starting fetch...");
     setLoading(true);
     try {
+      if (!buyerId) return;
       const url = `${API_URL}/cart?buyerId=${buyerId}`;
       console.log("buyerId in url is: ", url);
       console.log(" [fetchCart] Fetching:", url);
       const response = await fetch(url);
-      
+
 
       console.log(" [fetchCart] Response status:", response.status);
       console.log(" [fetchCart] Response :", response);
@@ -85,28 +88,28 @@ console.log("buyerId variable is: ", buyerId);
     }
   };
 
-useEffect(() => {
-    console.log(" [CartProvider] useEffect: Firing...");
-    if (buyerId) {
+  useEffect(() => {
+    console.log(" [CartProvider] useEffect: Firing...");
+    if (buyerId) {
       // Only fetch if we have a user
-      fetchCart();
-    } else {
+      fetchCart();
+    } else {
       // No user, so don't fetch. 
       // Clear the cart and stop loading.
-      console.log(" [CartProvider] No buyerId, clearing cart.");
-      setCartItems([]);
-      setLoading(false);
-    }
-  }, [buyerId]);
+      console.log(" [CartProvider] No buyerId, clearing cart.");
+      setCartItems([]);
+      setLoading(false);
+    }
+  }, [buyerId]);
 
   // -------------------------------
   // ADD ITEM
   // -------------------------------
   const addToCart = async (productId: string, quantity: number) => {
     if (!buyerId) {
-      console.error(" [addToCart] Cannot add item, no user logged in.");
-      return;
-    }
+      console.error(" [addToCart] Cannot add item, no user logged in.");
+      return;
+    }
     console.log(`🟦 [addToCart] Adding ${quantity} of product ${productId}`);
     try {
       const body = { productId, quantity, buyerId };
@@ -117,14 +120,14 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-console.log("i am respoonding with: ", res);
+      console.log("i am respoonding with: ", res);
       console.log(" [addToCart] Response status:", res.status);
       if (!res.ok) {
         // Log the *actual* error from the backend
-        const errorData = await res.json();
-        console.error(" [addToCart] Failed to add item:", errorData.error);
+        const errorData = await res.json();
+        console.error(" [addToCart] Failed to add item:", errorData.error);
         throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-      }
+      }
 
       await fetchCart();
     } catch (error) {
@@ -137,9 +140,9 @@ console.log("i am respoonding with: ", res);
   // -------------------------------
   const updateQuantity = async (productId: string, newQuantity: number) => {
     if (!buyerId) {
-      console.error(" [addToCart] Cannot add item, no user logged in.");
-      return;
-    }
+      console.error(" [addToCart] Cannot add item, no user logged in.");
+      return;
+    }
     console.log(` [updateQuantity] Changing product ${productId} → quantity ${newQuantity}`);
     const item = cartItems.find(i => i.product.productId === productId);
     if (!item) {
@@ -172,9 +175,9 @@ console.log("i am respoonding with: ", res);
   // -------------------------------
   const removeFromCart = async (productId: string) => {
     if (!buyerId) {
-      console.error(" [addToCart] Cannot add item, no user logged in.");
-      return;
-    }
+      console.error(" [addToCart] Cannot add item, no user logged in.");
+      return;
+    }
     console.log(` [removeFromCart] Removing product ${productId}`);
     const item = cartItems.find(i => i.product.productId === productId);
     if (!item) {

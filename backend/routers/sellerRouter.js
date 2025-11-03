@@ -33,7 +33,7 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage: storage }).array("images", 5);
+const upload = multer({ storage: storage }).array("images", 10);
 
 const isSeller = async (req, res, next) => {
   if (!req.user) {
@@ -60,15 +60,16 @@ sellerRouter.use(isSeller);
 // CREATE PRODUCT
 sellerRouter.post("/products", upload, async (req, res) => {
   try {
+    // --- Destructure all fields ---
     const {
       name,
       description,
       price,
       availableQuantity,
       categoryId,
-      originalPrice,
-      features,
-      specifications,
+      originalPrice, // This is a string or undefined
+      features, // This is a string or an array of strings
+      specifications, // This is a JSON string
     } = req.body;
     const sellerId = req.user?.userId;
 
@@ -90,10 +91,33 @@ sellerRouter.post("/products", upload, async (req, res) => {
         .status(403)
         .json({ error: "Description should not be more than 200 characters" });
 
+    // --- FIX 1: PARSE ALL INCOMING DATA ---
     const numPrice = parseFloat(price);
     const numAvailableQuantity = parseInt(availableQuantity, 10);
     const numCategoryId = parseInt(categoryId, 10);
 
+    // Parse originalPrice (and handle if it's not provided)
+    const numOriginalPrice = originalPrice ? parseFloat(originalPrice) : null;
+
+    // Handle features (Multer gives a string for one, or array for many)
+    const featuresArray = Array.isArray(features)
+      ? features
+      : features
+      ? [features]
+      : [];
+
+    // Parse the specifications JSON string
+    let specsObject = {};
+    try {
+      if (specifications) {
+        specsObject = JSON.parse(specifications);
+      }
+    } catch (parseError) {
+      console.error("Failed to parse specifications JSON:", parseError);
+      return res.status(400).json({ error: "Invalid specifications format." });
+    }
+
+    // --- FIX 2: VALIDATE PARSED NUMBERS ---
     if (
       isNaN(numPrice) ||
       isNaN(numAvailableQuantity) ||
@@ -103,6 +127,11 @@ sellerRouter.post("/products", upload, async (req, res) => {
         .status(400)
         .json({ error: "Invalid data types for price, stock, or category." });
     }
+    // Also validate originalPrice if it was provided
+    if (originalPrice && isNaN(numOriginalPrice)) {
+      return res.status(400).json({ error: "Invalid data type for originalPrice." });
+    }
+    // --- END OF FIXES ---
 
     const status =
       numAvailableQuantity === 0
@@ -114,33 +143,41 @@ sellerRouter.post("/products", upload, async (req, res) => {
     // get urls from cloudinary
     const imageUrls = req.files.map((file) => file.path);
 
+    // --- FIX 3: USE THE CORRECT PARSED VARIABLES ---
     const newProduct = await prisma.product.create({
       data: {
         name,
         description,
         price: numPrice,
-        originalPrice: numOriginalPrice,
+        originalPrice: numOriginalPrice, // Use parsed variable
         availableQuantity: numAvailableQuantity,
         status,
         seller_id: sellerId,
         categoryId: numCategoryId,
         imageUrls: imageUrls,
-        features: featuresArray,
-        specifications: specsObject,
+        features: featuresArray, // Use parsed variable
+        specifications: specsObject, // Use parsed variable
       },
     });
-    await elasticClient.index({
-      index: "product_index",
-      id: newProduct.productId,
-      document: {
-        productName: newProduct.name,
-        productDesc: newProduct.description,
-        availableQuantity: newProduct.availableQuantity,
-        price: newProduct.price,
-        features: newProduct.features,
-        specs: newProduct.specifications,
-      },
-    });
+
+    // Recommended: Wrap Elasticsearch in a try...catch
+    try {
+      await elasticClient.index({
+        index: "product_index",
+        id: newProduct.productId,
+        document: {
+          productName: newProduct.name,
+          productDesc: newProduct.description,
+          availableQuantity: newProduct.availableQuantity,
+          price: newProduct.price,
+          features: newProduct.features,
+          specs: newProduct.specifications,
+        },
+      });
+    } catch (elasticError) {
+      console.error("Failed to index new product, but product was created:", elasticError);
+    }
+
     res.status(201).json(newProduct);
   } catch (e) {
     console.error("Failed to create product:", e);
@@ -298,7 +335,6 @@ const getPublicIdFromUrl = (url) => {
 // UPDATE PRODUCTS (REPLACED)
 sellerRouter.put("/products/:id", upload, async (req, res) => {
   try {
-    // --- FIX 1: Destructure ALL fields from the form ---
     const {
       name,
       description,
@@ -308,13 +344,12 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
       originalPrice,
       features,
       specifications,
-      existingImageUrls, // This comes from your AddProduct.tsx
+      existingImageUrls,
     } = req.body;
 
     const sellerId = req.user?.userId;
     const { id: productId } = req.params;
 
-    // 2. Find the product first (auth check)
     const product = await prisma.product.findUnique({
       where: { productId: productId },
     });
@@ -322,15 +357,12 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     if (!product || product.seller_id !== sellerId)
       return res.status(404).json({ error: "Product not found" });
 
-    // --- FIX 2: Prepare ALL data for update ---
     const updateData = {};
 
-    // Conditionally add fields to updateData
     if (name) updateData.name = name;
     if (description) updateData.description = description;
     if (price) updateData.price = parseFloat(price);
 
-    // Handle originalPrice (allowing it to be set to null)
     if (originalPrice !== undefined) {
       updateData.originalPrice = originalPrice
         ? parseFloat(originalPrice)
@@ -350,12 +382,10 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
           : "In Stock";
     }
 
-    // Handle features
     if (features) {
       updateData.features = Array.isArray(features) ? features : [features];
     }
 
-    // Handle specifications
     if (specifications) {
       try {
         updateData.specifications = JSON.parse(specifications);
@@ -366,43 +396,48 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
       }
     }
 
-    // --- FIX 3: Correctly merge old and new images ---
-    // 'req.files' contains new files just uploaded
     const newImageFiles = req.files ? req.files.map((file) => file.path) : [];
-    // 'existingImageUrls' is the list of old URLs the user decided to keep
     const existingImages = Array.isArray(existingImageUrls)
       ? existingImageUrls
       : existingImageUrls
       ? [existingImageUrls]
       : [];
 
-    // Combine them to form the new array
     updateData.imageUrls = [...existingImages, ...newImageFiles];
 
-    // --- Update the product in the database ---
+    // --- Update the product in the main database ---
     const updatedProduct = await prisma.product.update({
       where: { productId: productId },
-      data: updateData, // This object now contains ALL fields
+      data: updateData,
     });
 
-    // --- FIX 4: Fix typo and update all fields in Elasticsearch ---
-    await elasticClient.update({
-      index: "product_index",
-      id: productId, // Use productId from params, not 'e.productId'
-      doc: {
-        // Use 'doc' for partial updates
-        productName: updatedProduct.name,
-        productDesc: updatedProduct.description,
-        availableQuantity: updatedProduct.availableQuantity,
-        price: updatedProduct.price,
-        features: updatedProduct.features, // Add updated features
-        specs: updatedProduct.specifications, // Add updated specs
-      },
-    });
+    // --- THIS IS THE FIX ---
+    // Try to update Elasticsearch, but don't fail the whole request
+    try {
+      await elasticClient.update({
+        index: "product_index",
+        id: productId,
+        doc: {
+          productName: updatedProduct.name,
+          productDesc: updatedProduct.description,
+          availableQuantity: updatedProduct.availableQuantity,
+          price: updatedProduct.price,
+          features: updatedProduct.features,
+          specs: updatedProduct.specifications,
+        },
+      });
+    } catch (elasticError) {
+      // Log the error, but don't send a 500 status
+      console.error("Failed to update Elasticsearch index:", elasticError);
+    }
+    // --- END OF FIX ---
 
+    // Send the success response
     res.json(updatedProduct);
+    
   } catch (e) {
-    console.error("Failed to update product:", e);
+    // This will now only catch critical database errors
+    console.error("Failed to update product in database:", e);
     res.status(500).json({ error: "Failed to update product" });
   }
 });

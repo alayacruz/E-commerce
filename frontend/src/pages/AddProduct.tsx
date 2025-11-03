@@ -240,7 +240,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
       alert(`Product ${isEditing ? 'updated' : 'saved'} successfully!`);
       onNavigate('products');
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {

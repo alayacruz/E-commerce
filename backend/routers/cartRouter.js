@@ -82,9 +82,9 @@ cartRouter.post("/addItem", async (req, res) => {
     if (product.availableQuantity < quantity)
       return res.status(400).json({ error: "Not enough stock" });
 
-    let cart = await prisma.cart.findUnique({ where: { buyerId } });
+    let cart = await prisma.cart.findUnique({ where: { buyerId: buyerId } });
     if (!cart) {
-      cart = await prisma.cart.create({ data: { buyerId } });
+      cart = await prisma.cart.create({ data: { buyerId: buyerId } });
     }
 
     let cartItem = await prisma.cartItem.findFirst({

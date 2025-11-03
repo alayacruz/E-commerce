@@ -1,11 +1,12 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
+import { useCart } from "../contexts/CartContext";
 
 const ShoppingCart: React.FC = () => {
   // CHANGED: Added `loading` from your context
-  const { cartItems, updateQuantity, removeFromCart, getTotalPrice, loading } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, getTotalPrice, loading } =
+    useCart();
   const navigate = useNavigate();
 
   // This logic remains the same, as getTotalPrice() from your context
@@ -16,7 +17,7 @@ const ShoppingCart: React.FC = () => {
 
   const handleCheckout = () => {
     if (cartItems.length > 0) {
-      navigate('/checkout');
+      navigate("/checkout");
     }
   };
 
@@ -24,7 +25,9 @@ const ShoppingCart: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-16 flex items-center justify-center">
-        <h2 className="text-2xl font-bold text-gray-900">Loading your cart...</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Loading your cart...
+        </h2>
       </div>
     );
   }
@@ -36,9 +39,12 @@ const ShoppingCart: React.FC = () => {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="bg-white rounded-2xl shadow-sm p-12">
             <ShoppingBag className="w-24 h-24 text-gray-300 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Your cart is empty
+            </h2>
             <p className="text-gray-600 mb-8">
-              Looks like you haven't added any items to your cart yet. Start shopping to fill it up!
+              Looks like you haven't added any items to your cart yet. Start
+              shopping to fill it up!
             </p>
             <Link
               to="/products"
@@ -67,7 +73,9 @@ const ShoppingCart: React.FC = () => {
             Continue Shopping
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-          <p className="text-gray-600 mt-2">{cartItems.length} items in your cart</p>
+          <p className="text-gray-600 mt-2">
+            {cartItems.length} items in your cart
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -75,13 +83,16 @@ const ShoppingCart: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item) => (
               // CHANGED: Use the unique ID from your database table (e.g., cartItemId)
-              <div key={item.cartItemId} className="bg-white rounded-xl shadow-sm p-6">
+              <div
+                key={item.cartItemId}
+                className="bg-white rounded-xl shadow-sm p-6"
+              >
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Product Image */}
                   <div className="w-full sm:w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     {/* CHANGED: Access nested product data */}
                     <img
-                      src={item.product.image}
+                      src={item.product.imageUrls[0]}
                       alt={item.product.name}
                       className="w-full h-full object-cover"
                     />
@@ -97,7 +108,9 @@ const ShoppingCart: React.FC = () => {
                         </h3>
                         <div className="flex items-center space-x-2">
                           {/* CHANGED: Access nested product data */}
-                          <span className="text-xl font-bold text-gray-900">${item.product.price}</span>
+                          <span className="text-xl font-bold text-gray-900">
+                            ${item.product.price}
+                          </span>
                           {/* CHANGED: Access nested product data */}
                           {item.product.originalPrice && (
                             <span className="text-sm text-gray-400 line-through">
@@ -112,16 +125,28 @@ const ShoppingCart: React.FC = () => {
                         <div className="flex items-center border border-gray-300 rounded-lg">
                           <button
                             // CHANGED: Pass product.productId and new quantity
-                            onClick={() => updateQuantity(item.product.productId, item.quantity - 1)}
+                            onClick={() =>
+                              updateQuantity(
+                                item.product.productId,
+                                item.quantity - 1
+                              )
+                            }
                             className="p-2 hover:bg-gray-100 transition-colors"
                             disabled={item.quantity <= 1}
                           >
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="px-4 py-2 font-medium">{item.quantity}</span>
+                          <span className="px-4 py-2 font-medium">
+                            {item.quantity}
+                          </span>
                           <button
                             // CHANGED: Pass product.productId and new quantity
-                            onClick={() => updateQuantity(item.product.productId, item.quantity + 1)}
+                            onClick={() =>
+                              updateQuantity(
+                                item.product.productId,
+                                item.quantity + 1
+                              )
+                            }
                             className="p-2 hover:bg-gray-100 transition-colors"
                           >
                             <Plus className="w-4 h-4" />
@@ -130,7 +155,9 @@ const ShoppingCart: React.FC = () => {
 
                         <button
                           // CHANGED: Pass product.productId to remove
-                          onClick={() => {removeFromCart(item.product.productId)}}
+                          onClick={() => {
+                            removeFromCart(item.product.productId);
+                          }}
                           className="text-red-600 hover:text-red-700 p-2"
                           title="Remove item"
                         >
@@ -160,12 +187,16 @@ const ShoppingCart: React.FC = () => {
           {/* -------------------------------------------------- */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                Order Summary
+              </h2>
 
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">${getTotalPrice().toFixed(2)}</span>
+                  <span className="font-medium">
+                    ${getTotalPrice().toFixed(2)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between">

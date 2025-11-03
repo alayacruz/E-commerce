@@ -5,123 +5,75 @@ import { PrismaClient, Prisma } from "@prisma/client";
 const prisma = new PrismaClient();
 const productRouter = express.Router();
 
-// 1. GET /products (For ProductListings page with filtering)
+// In your productRouter.js file:
+
 productRouter.get("/", async (req, res) => {
+  // 1. Get pagination params from query, with defaults
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 9; // e.g., 9 products per page
+  const skip = (page - 1) * limit;
+
   const { search, categories, sortBy, priceMin, priceMax } = req.query;
 
   try {
     let where = {
-      isArchived: false, // Don't show archived products
+      isArchived: false,
     };
     let orderBy = {};
 
-    // --- Build Where Clause ---
-    // Search filter
+    // --- Build Where Clause (This logic is the same as your old file) ---
     if (search) {
-      where.name = {
-        contains: search,
-        mode: "insensitive", // Case-insensitive search
-      };
+      where.name = { contains: search, mode: "insensitive" };
     }
-
-    // Price filter
     if (priceMin || priceMax) {
       where.price = {};
       if (priceMin) where.price.gte = parseFloat(priceMin);
       if (priceMax) where.price.lte = parseFloat(priceMax);
     }
-
-    // --- CHANGE 2: Updated Category Filter Logic ---
-    // This now finds all descendant categories
     if (categories) {
-      const categoryList = categories.split(",").map(c => c.trim());
-
-      // 1. Find the initial category IDs from their names
-      const initialCategories = await prisma.category.findMany({
-        where: {
-          categoryName: {
-            in: categoryList,
-            mode: "insensitive",
-          },
-        },
-        select: { categoryId: true },
-      });
-
-      const initialCategoryIds = initialCategories.map(c => c.categoryId);
-
-      // 2. Use a recursive query to find all descendant IDs
-      const allCategoryIds = await prisma.$queryRaw`
-        WITH RECURSIVE "CategoryDescendants" AS (
-          -- Base case: Select the initial categories
-          SELECT "categoryId"
-          FROM "Category"
-          WHERE "categoryId" IN (${Prisma.join(initialCategoryIds)})
-
-          UNION
-
-          -- Recursive step: Find all children of the categories already in the set
-          SELECT c."categoryId"
-          FROM "Category" c
-          INNER JOIN "CategoryDescendants" cd ON c."parentCategoryId" = cd."categoryId"
-        )
-        SELECT "categoryId" FROM "CategoryDescendants";
-      `;
-      
-      const idList = allCategoryIds.map(c => c.categoryId);
-
-      // 3. Add the complete list of IDs to the 'where' clause
-      // If idList is empty (no categories found), this will correctly return no products.
-      where.categoryId = {
-        in: idList,
-      };
+      // ... (Your existing recursive category logic)
+      // This example assumes 'idList' is the final array of category IDs
+      // where.categoryId = { in: idList };
     }
-    // --- End of Category Filter Logic ---
+    // --- End of Where Clause ---
 
-    // --- Build OrderBy Clause ---
+    // --- Build OrderBy Clause (Same as your old file) ---
     switch (sortBy) {
-      case "price-low":
-        orderBy = { price: "asc" };
-        break;
-      case "price-high":
-        orderBy = { price: "desc" };
-        break;
-      case "newest":
-        // Assuming you add a 'createdAt' field to your Product model
-        // orderBy = { createdAt: 'desc' };
-        break;
-      case "rating":
-        // This requires a more complex query, so we'll sort later
-        break;
-      default:
-        orderBy = { name: "asc" };
+      case "price-low": orderBy = { price: "asc" }; break;
+      case "price-high": orderBy = { price: "desc" }; break;
+      // ... other sort options
+      default: orderBy = { name: "asc" };
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      orderBy,
-      include: {
-        category: {
-          select: { categoryName: true },
+    // 2. Run two queries at the same time: one to get the products for the page
+    // and one to get the total count of matching products
+    const [products, totalProducts] = await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        orderBy,
+        include: {
+          category: { select: { categoryName: true } },
+          reviews: { select: { rating: true } },
         },
-        reviews: {
-          // Include reviews to calculate rating
-          select: { rating: true },
-        },
-      },
-    });
+        take: limit, // Get only 'limit' number of items
+        skip: skip, // Skip the items from previous pages
+      }),
+      prisma.product.count({
+        where,
+      }),
+    ]);
 
-    // --- Calculate ratings and transform data ---
+    // 3. Calculate total pages
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // --- Calculate ratings and transform data (Same as your old file) ---
     const productsWithRatings = products.map((p) => {
-      const totalRating = p.reviews.reduce(
-        (acc, review) => acc + review.rating,
-        0
-      );
+      const totalRating = p.reviews.reduce((acc, review) => acc + review.rating, 0);
       const rating = p.reviews.length > 0 ? totalRating / p.reviews.length : 0;
-
       return {
         id: p.productId,
         name: p.name,
-        price: parseFloat(p.price), 
+        price: parseFloat(p.price), // Make sure this is a number
         originalPrice: p.originalPrice ? parseFloat(p.originalPrice) : null,
         image: p.imageUrls[0] || null,
         rating: parseFloat(rating.toFixed(1)),
@@ -131,12 +83,19 @@ productRouter.get("/", async (req, res) => {
       };
     });
 
-    // Sort by rating if requested
+    // Sort by rating if needed
     if (sortBy === "rating") {
       productsWithRatings.sort((a, b) => b.rating - a.rating);
     }
 
-    res.json(productsWithRatings);
+    // 4. Return the new response object
+    res.json({
+      products: productsWithRatings,
+      currentPage: page,
+      totalPages: totalPages,
+      totalProducts: totalProducts
+    });
+
   } catch (e) {
     console.error("Failed to fetch products:", e);
     res.status(500).json({ error: "Failed to fetch products" });
