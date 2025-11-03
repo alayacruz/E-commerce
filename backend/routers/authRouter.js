@@ -5,7 +5,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 // --- 1. IMPORT YOUR AUTH MIDDLEWARE ---
 // (Make sure the path is correct)
-import authMiddleware from "../middleware/auth.middleware.js"; 
+import authMiddleware from "../middleware/auth.middleware.js";
 
 dotenv.config();
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
@@ -54,7 +54,7 @@ authRouter.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // --- Use Prisma's default uuid generation ---
     // const userId = `user_${Date.now()}_${Math.random()
     //   .toString(36)
@@ -180,13 +180,12 @@ authRouter.post("/login", async (req, res) => {
     username: username,
     email: user.email_id,
     firstName: user.first_name,
-    phoneNumbers: user.phoneNumbers.map(p => p.phone_no),
+    phoneNumbers: user.phoneNumbers.map((p) => p.phone_no),
     addresses: user.addresses,
     createdAt: user.createdAt, // <-- ADD THIS LINE
-  }
+  };
   res.json({ message: "Login successful", token, userInfo });
 });
-
 
 // --- 3. ADD NEW ROUTE TO UPDATE PROFILE ---
 authRouter.put("/profile", authMiddleware, async (req, res) => {
@@ -199,8 +198,8 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
 
   try {
     // Parse the data from the frontend
-    const [firstName, ...lastNameParts] = username.split(' ');
-    const lastName = lastNameParts.join(' ') || null;
+    const [firstName, ...lastNameParts] = username.split(" ");
+    const lastName = lastNameParts.join(" ") || null;
     const newPhone = phoneNumbers[0] || ""; // Get the primary phone
 
     // Use a transaction to update user and phone number
@@ -212,12 +211,12 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
           first_name: firstName,
           last_name: lastName,
           email_id: email,
-        }
+        },
       });
 
       // 2. Delete all old phone numbers for this user
       await tx.phoneNumber.deleteMany({
-        where: { user_id: userId }
+        where: { user_id: userId },
       });
 
       // 3. Add the new phone number (if it's not empty)
@@ -225,19 +224,21 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
         await tx.phoneNumber.create({
           data: {
             user_id: userId,
-            phone_no: newPhone
-          }
+            phone_no: newPhone,
+          },
         });
       }
     });
-    
+
     // 4. Fetch the full, updated user info to send back
     const fullUser = await prisma.user.findUnique({
       where: { user_id: userId },
-      include: { phoneNumbers: true, addresses: true }
+      include: { phoneNumbers: true, addresses: true },
     });
 
-    const updatedUsername = fullUser.last_name ? `${fullUser.first_name} ${fullUser.last_name}` : fullUser.first_name;
+    const updatedUsername = fullUser.last_name
+      ? `${fullUser.first_name} ${fullUser.last_name}`
+      : fullUser.first_name;
 
     // Create the same userInfo object as the login route
     const userInfo = {
@@ -245,22 +246,63 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
       username: updatedUsername,
       email: fullUser.email_id,
       firstName: fullUser.first_name,
-      phoneNumbers: fullUser.phoneNumbers.map(p => p.phone_no),
+      phoneNumbers: fullUser.phoneNumbers.map((p) => p.phone_no),
       addresses: fullUser.addresses,
-      createdAt: fullUser.createdAt 
+      createdAt: fullUser.createdAt,
     };
-    
-    // 5. Send the new user object back to the frontend
-    res.json(userInfo); 
 
+    // 5. Send the new user object back to the frontend
+    res.json(userInfo);
   } catch (e) {
     console.error("Profile update error:", e);
-    if (e.code === 'P2002') {
+    if (e.code === "P2002") {
       return res.status(400).json({ error: "This email is already in use." });
     }
     res.status(500).json({ error: "Failed to update profile." });
   }
 });
 
+authRouter.post("/addAddresses", async (req, res) => {
+  const { addresses, userId } = req.body; //addresses is an array of address objects
+  // street        String
+  // city          String
+  // state         String
+  // country       String
+  // pin           String
+  const addressInserts = addresses.map((e) => {
+    e.user_id = userId;
+    return e;
+  });
+  if (!userId || addresses.length == 0)
+    return res
+      .status(400)
+      .json({ error: "User ID either not given/Addresses is empty." });
+  const newAddresses = await prisma.address.createMany({
+    data: addressInserts,
+    skipDuplicates: true,
+  });
+  return res
+    .status(200)
+    .json({ message: "New addresses were successfully added." });
+});
+
+authRouter.delete("/:userId", authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  try {
+    if (!userId) return res.status(400).json({ error: "User Id not given" });
+    const deleteUser = await prisma.user.findFirst({
+      where: { user_id: userId },
+    });
+    if (!deleteUser)
+      return res
+        .status(400)
+        .json({ error: "User to be deleted does not exist" });
+    await prisma.user.delete({ where: { user_id: userId } });
+    return res.status(200).json({ message: "user was successfully deleted." });
+  } catch (e) {
+    console.log("Error deleting user: ", e);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 export default authRouter;

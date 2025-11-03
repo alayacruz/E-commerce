@@ -1,25 +1,182 @@
 import React, { useState, useEffect } from "react";
-import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Calendar } from 'lucide-react';
+import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Calendar, ArrowLeft, Plus } from 'lucide-react';
 import { Link } from "react-router-dom";
 
-interface StoredUser {
+// Interface for the new address form
+type NewAddressForm = {
+  street: string;
+  city: string;
+  state: string;
+  country: string;
+  pin: string;
+};
+
+type AddNewAddressProps = {
+  onSave: (addresses: NewAddressForm[]) => void;
+  onCancel: () => void;
+};
+
+
+const AddNewAddress: React.FC<AddNewAddressProps> = ({ onSave, onCancel }) => {
+  const [newAddresses, setNewAddresses] = useState<NewAddressForm[]>([
+    { street: "", city: "", state: "", country: "", pin: "" } // Start with one blank form
+  ]);
+
+  const handleNewAddressChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const updatedAddresses = [...newAddresses];
+    updatedAddresses[index] = { ...updatedAddresses[index], [name]: value };
+    setNewAddresses(updatedAddresses);
+  };
+
+  const addAnotherAddressForm = () => {
+    setNewAddresses(prev => [
+      ...prev,
+      { street: "", city: "", state: "", country: "", pin: "" }
+    ]);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(newAddresses);
+  };
+ return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={onCancel} // Use the onCancel prop
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Profile
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Add New Addresses</h1>
+          <p className="text-gray-600">
+            Add one or more new addresses to your account.
+          </p>
+        </div>
+
+        {/* Main Form Content */}
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
+            {newAddresses.map((address, index) => (
+              <div key={index} className="bg-white rounded-xl shadow-sm p-6 relative">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Address {index + 1}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+                    <input
+                      type="text"
+                      name="street"
+                      value={address.street}
+                      onChange={(e) => handleNewAddressChange(index, e)}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={address.city}
+                        onChange={(e) => handleNewAddressChange(index, e)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                      <input
+                        type="text"
+                        name="state"
+                        value={address.state}
+                        onChange={(e) => handleNewAddressChange(index, e)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">PIN Code</label>
+                      <input
+                        type="text"
+                        name="pin"
+                        value={address.pin}
+                        onChange={(e) => handleNewAddressChange(index, e)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                      <input
+                        type="text"
+                        name="country"
+                        value={address.country}
+                        onChange={(e) => handleNewAddressChange(index, e)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={addAnotherAddressForm}
+              className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add More Address
+            </button>
+            <button
+              type="submit"
+              className="w-full sm:w-auto mt-4 sm:mt-0 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+            >
+              Save All Addresses
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+// --- END of MOCK AddNewAddress component ---
+
+
+type StoredUser = {
+  userId: string; // <-- Fixed: Added userId
   username: string;
   email: string;
   phoneNumbers: string[];
   addresses: StoredAddress[];
-  dateJoined: string;
-}
+  dateJoined: string; 
+  createdAt: string; 
+};
 
-interface StoredAddress {
+type StoredAddress = {
   address_id: number;
   street: string;
   city: string;
   state: string;
   pin: string;
   country: string;
-}
+  user_id?: string; 
+};
 
-interface ComponentAddress {
+type ComponentAddress = {
   id: number;
   type: string;
   name: string;
@@ -28,11 +185,12 @@ interface ComponentAddress {
   zipCode: string;
   phone: string;
   isDefault: boolean;
-}
+};
 
 const UserProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
+   const [isAddingAddress, setIsAddingAddress] = useState(false);
 
   const [userInfo, setUserInfo] = useState({
     name: "",
@@ -178,6 +336,84 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  const handleSaveNewAddresses = async (addressesToSave: NewAddressForm[]) => {
+    
+    // 1. Get userId from localStorage
+    const storedUserString = localStorage.getItem("user");
+    let userId;
+    if (storedUserString) {
+      try {
+        const parsedUser: StoredUser = JSON.parse(storedUserString);
+        userId = parsedUser.userId;
+      } catch (e) {
+        console.error("Failed to parse user from localStorage", e);
+      }
+    }
+
+    if (!userId) {
+      console.error("No user ID found. Cannot save addresses.");
+      return;
+    }
+
+    // 2. Make the real fetch call
+    try {
+      const response = await fetch('http://localhost:3000/auth/addAddresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          addresses: addressesToSave, // Use the argument here
+          userId: userId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save new addresses');
+      }
+
+      const result = await response.json();
+      console.log(result.message); 
+
+      // 3. Optimistic update for UI
+      const mappedNewAddresses: ComponentAddress[] = addressesToSave.map((addr, index) => ({
+        id: Date.now() + index, // Use a temporary fake ID
+        type: "Home", 
+        name: userInfo.name,
+        address: addr.street,
+        city: addr.city,
+        zipCode: addr.pin,
+        phone: userInfo.phone,
+        isDefault: addresses.length === 0 && index === 0,
+      }));
+
+      // 4. Update local state
+      setAddresses(prev => [...prev, ...mappedNewAddresses]);
+      
+      // 5. Update localStorage (optimistically)
+      if (storedUserString) {
+        try {
+          const parsedUser: StoredUser = JSON.parse(storedUserString);
+          const newStoredAddresses: StoredAddress[] = addressesToSave.map((addr, index) => ({
+            ...addr,
+            address_id: Date.now() + index, // Fake ID
+          }));
+          parsedUser.addresses = [...parsedUser.addresses, ...newStoredAddresses];
+          localStorage.setItem("user", JSON.stringify(parsedUser));
+        } catch (e) {
+          console.error("Failed to update localStorage with new addresses", e);
+        }
+      }
+
+      // 6. Return to profile
+      setActiveTab("addresses"); 
+      setIsAddingAddress(false); 
+
+    } catch (e) {
+      console.error("Error saving new addresses:", e);
+    }
+  };
+
+
   const formatJoinedDate = (dateString: string) => {
     if (!dateString) {
       return "Not set"; // Fallback if date is missing
@@ -208,6 +444,19 @@ const UserProfile: React.FC = () => {
     { id: "addresses", label: "Addresses", icon: MapPin },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
+  if (isAddingAddress) {
+    return (
+      <AddNewAddress 
+        onSave={handleSaveNewAddresses}
+        onCancel={() => {
+          setIsAddingAddress(false);
+          setActiveTab("addresses"); // Ensure we go back to addresses tab
+        }}
+      />
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -423,7 +672,9 @@ const UserProfile: React.FC = () => {
                   <h2 className="text-xl font-bold text-gray-900">
                     Saved Addresses
                   </h2>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <button
+                   onClick={() => setIsAddingAddress(true)}
+                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     Add New Address
                   </button>
                 </div>
