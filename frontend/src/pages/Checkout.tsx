@@ -63,10 +63,6 @@ const Checkout: React.FC = () => {
     clearCart();
   };
 
-  if (cartItems.length === 0) {
-    navigate('/cart');
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -294,18 +290,18 @@ const Checkout: React.FC = () => {
                 
                 <div className="space-y-4 mb-6">
                   {cartItems.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-gray-200">
+                    <div key={item.cartItemId} className="flex items-center space-x-4 py-4 border-b border-gray-200">
                       <img
-                        src={item.image}
-                        alt={item.name}
+                        src={item.product.imageUrls[0]}
+                        alt={item.product.name}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{item.name}</h3>
+                        <h3 className="font-medium text-gray-900">{item.product.name}</h3>
                         <p className="text-gray-600">Quantity: {item.quantity}</p>
                       </div>
                       <div className="text-lg font-semibold text-gray-900">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ${(item.product.price * item.quantity).toFixed(2)}
                       </div>
                     </div>
                   ))}

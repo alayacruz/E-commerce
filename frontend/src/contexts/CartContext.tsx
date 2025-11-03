@@ -20,6 +20,7 @@ interface CartContextType {
   updateQuantity: (productId: string, newQuantity: number) => Promise<void>;
   getTotalPrice: () => number;
   getTotalItems: () => number;
+  clearCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -207,6 +208,28 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const clearCart = async () => { 
+    if (!buyerId) {
+      console.error(" [clearCart] Cannot clear cart, no user logged in.");
+      return;
+    }
+    console.log(" [clearCart] Clearing cart from database...");
+    
+    try {
+      const res = await fetch(`${API_URL}/cart/clear?buyerId=${buyerId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      console.log(" [clearCart] Database cleared, clearing local state.");
+      setCartItems([]); 
+    } catch (error) {
+      console.error(" [clearCart] Failed to clear cart:", error);
+    }
+  };
+
   const getTotalPrice = () => {
     const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     console.log(" [getTotalPrice] Total:", total);
@@ -227,6 +250,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateQuantity,
     getTotalPrice,
     getTotalItems,
+    clearCart,
   };
 
   console.log(" [CartProvider] Render:", { cartItems, loading });

@@ -158,4 +158,30 @@ cartRouter.patch("/updateQuantity", async (req, res) => {
   }
 });
 
+cartRouter.delete("/clear", async (req, res) => {
+  try {
+    const { buyerId } = req.query; 
+
+    if (!buyerId) {
+      return res.status(400).json({ error: "Buyer ID not provided" });
+    }
+
+    const cart = await prisma.cart.findUnique({
+      where: { buyerId: buyerId.toString() },
+    });
+
+    if (!cart) {
+      return res.status(200).json({ message: "Cart not found, nothing to clear" });
+    }
+    await prisma.cartItem.deleteMany({ where: { cartId: cart.cartId } });
+    
+    // await redisClient.del(`cart:${buyerId}`); // Also clear from Redis
+    
+    return res.status(200).json({ message: "Cart cleared successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default cartRouter;
