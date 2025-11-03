@@ -332,7 +332,9 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
 
     // Handle originalPrice (allowing it to be set to null)
     if (originalPrice !== undefined) {
-      updateData.originalPrice = originalPrice ? parseFloat(originalPrice) : null;
+      updateData.originalPrice = originalPrice
+        ? parseFloat(originalPrice)
+        : null;
     }
 
     if (categoryId) updateData.categoryId = parseInt(categoryId, 10);
@@ -350,9 +352,7 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
 
     // Handle features
     if (features) {
-      updateData.features = Array.isArray(features)
-        ? features
-        : [features];
+      updateData.features = Array.isArray(features) ? features : [features];
     }
 
     // Handle specifications
@@ -360,7 +360,9 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
       try {
         updateData.specifications = JSON.parse(specifications);
       } catch (parseError) {
-        return res.status(400).json({ error: "Invalid specifications format." });
+        return res
+          .status(400)
+          .json({ error: "Invalid specifications format." });
       }
     }
 
@@ -370,7 +372,9 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     // 'existingImageUrls' is the list of old URLs the user decided to keep
     const existingImages = Array.isArray(existingImageUrls)
       ? existingImageUrls
-      : existingImageUrls ? [existingImageUrls] : [];
+      : existingImageUrls
+      ? [existingImageUrls]
+      : [];
 
     // Combine them to form the new array
     updateData.imageUrls = [...existingImages, ...newImageFiles];
@@ -385,7 +389,8 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
     await elasticClient.update({
       index: "product_index",
       id: productId, // Use productId from params, not 'e.productId'
-      doc: {         // Use 'doc' for partial updates
+      doc: {
+        // Use 'doc' for partial updates
         productName: updatedProduct.name,
         productDesc: updatedProduct.description,
         availableQuantity: updatedProduct.availableQuantity,

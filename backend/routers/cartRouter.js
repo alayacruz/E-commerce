@@ -101,11 +101,6 @@ cartRouter.post("/addItem", async (req, res) => {
         data: { cartId: cart.cartId, productId, quantity },
       });
     }
-
-    await prisma.product.update({
-      where: { productId },
-      data: { availableQuantity: { decrement: quantity } },
-    });
     //await redisClient.del(`cart:${buyerId}`);
 
     return res.status(200).json({ cartItem });
@@ -138,15 +133,6 @@ cartRouter.patch("/updateQuantity", async (req, res) => {
 
     if (increase && product.availableQuantity < quantity)
       return res.status(400).json({ error: "Not enough stock" });
-
-    await prisma.product.update({
-      where: { productId },
-      data: {
-        availableQuantity: increase
-          ? { decrement: quantity }
-          : { increment: quantity },
-      },
-    });
 
     let newQuantity = increase
       ? cartItem.quantity + quantity
