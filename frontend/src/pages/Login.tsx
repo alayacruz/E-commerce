@@ -68,6 +68,11 @@ const LogIn: React.FC = () => {
       toast.error("Gender and Date of Birth are required for buyers.", { style: toastStyle });
       return;
     }
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      toast.error("Please enter a valid phone number", { style: toastStyle });
+      return;
+    }
     if (formData.dob) {
       const birthDate = new Date(formData.dob);
       const today = new Date();
