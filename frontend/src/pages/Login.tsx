@@ -398,17 +398,7 @@ const LogIn: React.FC = () => {
             </div>
           )}
 
-          {isLogin && (
-            <div className="text-right">
-              <a
-                href="#"
-                className="text-sm text-black hover:text-blue-600"
-                onClick={(e) => e.preventDefault()}
-              >
-                Forgot your password?
-              </a>
-            </div>
-          )}
+         
 
           <button
             type="submit"
