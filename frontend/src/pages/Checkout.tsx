@@ -41,7 +41,7 @@ const getInitialShippingInfo = () => {
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
-  const { cartItems, getTotalPrice, clearCart } = useCart();
+  const { cartItems, getTotalPrice } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('cod');
 
@@ -60,7 +60,6 @@ const Checkout: React.FC = () => {
       paymentMethod
     };
     navigate('/order-confirmed', { state: orderData });
-    clearCart();
   };
 
 

@@ -1,5 +1,4 @@
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
@@ -102,12 +101,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <CartProvider>
       <AuthProvider>
-        <Router>
+        <CartProvider>
           <AppContent />
-        </Router>
+        </CartProvider>
       </AuthProvider>
-    </CartProvider>
   );
 }
+ 

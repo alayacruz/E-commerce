@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface CartItem {
   cartItemId: string;
@@ -38,18 +39,23 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   const API_URL = 'http://localhost:3000';
-  const userString = localStorage.getItem("user"); // 1. Get the string
-  let buyerId: unknown;
+  const [buyerId, setBuyerId] = useState<string | undefined>();
+  const location = useLocation();
+  
+  useEffect(() => {
+    console.log("[CartProvider] path changed, checking for user...");
+    const userString = localStorage.getItem("user");
+    if (userString) {
+      const user = JSON.parse(userString);
+      setBuyerId(user.userId);
+      console.log(" [CartProvider] Found userId:", user.userId);
+    } else {
+      setBuyerId(undefined);
+      console.log(" [CartProvider] No user found.");
+    }
+  }, [location.pathname]);
 
-  if (userString) {
-    const user = JSON.parse(userString); // 2. Parse the string into an object
-    buyerId = user.userId;         // 3. Now you can access the property
-    console.log("buyerId variable is: ", buyerId);
-  }else {
-    // User was NOT found, so log error and stop loading
-    console.error(" [CartProvider] No user found in localStorage.");
-    setLoading(false);
-  }
+  
   // -------------------------------
   // FETCH CART FROM BACKEND
   // -------------------------------
@@ -63,7 +69,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log(" [fetchCart] Fetching:", url);
       const response = await fetch(url);
 
-
       console.log(" [fetchCart] Response status:", response.status);
       console.log(" [fetchCart] Response :", response);
 
@@ -71,7 +76,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (response.status === 400) {
           console.warn(" [fetchCart] Empty cart (status 400)");
           setCartItems([]);
-          return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -92,11 +96,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     console.log(" [CartProvider] useEffect: Firing...");
     if (buyerId) {
-      // Only fetch if we have a user
       fetchCart();
     } else {
-      // No user, so don't fetch. 
-      // Clear the cart and stop loading.
       console.log(" [CartProvider] No buyerId, clearing cart.");
       setCartItems([]);
       setLoading(false);
