@@ -12,7 +12,7 @@ const ShoppingCart: React.FC = () => {
   // This logic remains the same, as getTotalPrice() from your context
   // should already be updated to handle the new cart item structure.
   const deliveryFee = cartItems.length > 0 ? 15 : 0;
-  const discount = getTotalPrice() > 200 ? 20 : 0;
+  const discount = getTotalPrice() > 200 ? 15 : 0;
   const finalTotal = getTotalPrice() + deliveryFee - discount;
 
   const handleCheckout = () => {

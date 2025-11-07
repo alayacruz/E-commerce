@@ -237,115 +237,150 @@ orderRouter.post("/buyNow", async (req, res) => {
   }
 });
 
-// DOES NOT WORK
-orderRouter.post("/placeCart", async (req, res) => {
+orderRouter.post("/createFromCart", async (req, res) => {
+  // 1. Get data from frontend (e.g., Checkout.tsx)
   const {
-    amount, //total amount
     buyerId,
-    productArr, //array having objects like {productId:"", quantity:int}
     paymentMethod,
-    returnUrl,
-    cancelUrl,
+    amount, // This is the 'finalTotal' (subtotal + shipping - discount)
+    returnUrl, // Required for PayPal
+    cancelUrl,  // Required for PayPal
   } = req.body;
-  if (!buyerId || !productArr || !paymentMethod)
-    return res.status(400).json({
-      error: "Request body not complete",
-    });
-  if (!returnUrl || !cancelUrl)
-    return res.status(400).json({
-      error: "Request body does not have return/cancel Url",
-    });
-  try {
-    let numericAmount = 0;
-    const products = await Promise.all(
-      productArr.map(async (e) => {
-        const p = await prisma.product.findUnique({
-          where: { productId: e.productId },
-        });
-        if (!p) throw new Error("Product with given ID does not exist.");
-        if (p.quantity < e.quantity)
-          throw new Error("Enough stock not available of product");
-        numericAmount += p.price * e.quantity;
-        return p;
-      })
-    );
-    console.log("products are: ", products);
 
+  if (!buyerId || !paymentMethod || !amount) {
+    return res.status(400).json({ error: "Missing required order information." });
+  }
+
+  // 2. Validate PayPal-specific fields
+  if (paymentMethod === "PayPal" && (!returnUrl || !cancelUrl)) {
+    return res.status(400).json({ error: "PayPal requires returnUrl and cancelUrl." });
+  }
+
+  try {
     let paymentExternalId = null;
     let approvalUrl = null;
 
-    if (paymentMethod === "PayPal") {
-      const paypalOrder = await createPayPalOrder(
-        new Decimal(numericAmount),
-        returnUrl,
-        cancelUrl
-      );
-      console.log("PAYPAL ORDER: ", paypalOrder);
-      paymentExternalId = paypalOrder.id; // Store PayPal's Order ID
-      const approvalLink = paypalOrder.links.find(
-        (link) => link.rel === "payer-action"
-      );
-      if (approvalLink) {
-        approvalUrl = approvalLink.href;
-      } else {
-        throw new Error("Could not find PayPal approval URL.");
+    // 3. --- Start Atomic Database Transaction ---
+    const newOrder = await prisma.$transaction(async (tx) => {
+      // 4. Get the user's cart securely from the DB
+      const cart = await tx.cart.findUnique({
+        where: { buyerId: buyerId },
+        include: {
+          items: {
+            include: {
+              product: true, // Include product to check stock and price
+            },
+          },
+        },
+      });
+
+      if (!cart || cart.items.length === 0) {
+        throw new Error("Your cart is empty.");
       }
-    } else if (paymentMethod !== "CoD" && paymentMethod) {
-      return res.status(400).json({ error: "Unsupported payment method." });
-    }
-    const orderId = uuid4();
-    const transactionResult = await prisma.$transaction(async (tx) => {
-      const newOrder = await tx.order.create({
+
+      // 5. Check stock for all items
+      for (const item of cart.items) {
+        if (item.product.availableQuantity < item.quantity) {
+          throw new Error(`Not enough stock for: ${item.product.name}`);
+        }
+      }
+
+      // 6. Create PayPal Order (if needed) *before* creating the local order
+      if (paymentMethod === "PayPal") {
+        const paypalOrder = await createPayPalOrder(
+          new Decimal(amount), // Use the final total from the request
+          returnUrl,
+          cancelUrl
+        );
+        paymentExternalId = paypalOrder.id; // Store PayPal's Order ID
+        const approvalLink = paypalOrder.links.find(
+          (link) => link.rel === "payer-action"
+        );
+        if (approvalLink) {
+          approvalUrl = approvalLink.href;
+        } else {
+          throw new Error("Could not find PayPal approval URL.");
+        }
+      }
+      
+      const orderId = uuid4(); // Generate a unique ID for the order
+
+      // 7. Create the Order
+      const order = await tx.order.create({
         data: {
           order_id: orderId,
           order_date: new Date(),
-          status: paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING",
-          amount: new Decimal(numericAmount),
+          status: paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING", // PENDING for CoD
+          amount: new Decimal(amount), // Use the final total from the request
           buyer_id: buyerId,
         },
       });
-      products.forEach(async (e) => {
-        const orderItem = await tx.orderItem.create({
-          data: {
-            order_id: orderId,
-            product_id: e.productId,
-            quantity: productArr.find((x) => {
-              return x.productId === e.productId;
-            }).quantity,
-          },
-        });
+
+      // 8. Create OrderItems from CartItems (using createMany)
+      const orderItemsData = cart.items.map((item) => ({
+        order_id: order.order_id,
+        product_id: item.productId,
+        quantity: item.quantity,
+      }));
+
+      await tx.orderItem.createMany({
+        data: orderItemsData,
       });
 
+      // 9. Update stock quantity for each product
+      const stockUpdates = cart.items.map((item) =>
+        tx.product.update({
+          where: { productId: item.productId },
+          data: {
+            availableQuantity: {
+              decrement: item.quantity,
+            },
+          },
+        })
+      );
+      await Promise.all(stockUpdates); // Run all updates concurrently
+
+      // 10. Create the Payment record
       await tx.payment.create({
         data: {
-          amount: new Decimal(numericAmount),
-          // Status is PENDING for PayPal, INITIATED for CoD. It gets updated later for PayPal.
-          status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED",
-          date: new Date(),
-          method: paymentMethod || "CoD",
-          orderId: newOrder.order_id,
+          orderId: order.order_id,
           buyerId: buyerId,
-          external_transaction_id: paymentExternalId,
+          amount: new Decimal(amount), 
+          status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED", 
+          method: paymentMethod,
+          date: new Date(),
+          external_transaction_id: paymentExternalId, // Null for CoD
         },
       });
-      return newOrder;
+
+      // 11. Clear the user's cart
+      await tx.cartItem.deleteMany({
+        where: { cartId: cart.cartId },
+      });
+
+      return order; // Return the newly created order
     });
 
+    // 12. Send response back to client
     if (paymentMethod === "PayPal" && approvalUrl) {
+      // Send 202 (Accepted) with the PayPal URL for redirection
       return res.status(202).json({
         message: "PayPal Order created. Redirect buyer for approval.",
-        order: transactionResult,
+        order: newOrder,
         approval_url: approvalUrl,
         paypal_order_id: paymentExternalId,
       });
     }
+
+    // Send 201 (Created) for CoD orders
     res.status(201).json({
-      message: "Cart order placed successfully (CoD).",
-      order: transactionResult,
+      message: "Order placed successfully (CoD).",
+      order: newOrder,
     });
-  } catch (err) {
-    console.error("Cart order transaction failed:", err);
-    res.status(500).json({ error: "Failed to place Buy Now order." });
+    
+  } catch (error) {
+    console.error("Failed to place order:", error);
+    res.status(400).json({ error: error.message });
   }
 });
 

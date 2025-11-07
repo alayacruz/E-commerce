@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, CreditCard, Truck } from 'lucide-react';
+import { ArrowLeft, MapPin, Truck, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import {clearCart} from '../contexts/CartContext';
 
 // Helper function to get shipping info from localStorage
 const getInitialShippingInfo = () => {
@@ -41,27 +42,96 @@ const getInitialShippingInfo = () => {
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
-  const { cartItems, getTotalPrice } = useCart();
+  const { cartItems, getTotalPrice, clearCart } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('cod');
-
+  const [isLoading, setIsLoading] = useState(false);
   const [shippingInfo, setShippingInfo] = useState(getInitialShippingInfo);
   
   const deliveryFee = 15;
-  const discount = getTotalPrice() > 200 ? 20 : 0;
+  const discount = getTotalPrice() > 200 ? 15 : 0;
   const finalTotal = getTotalPrice() + deliveryFee - discount;
 
-  const handlePlaceOrder = () => {
-    // Simulate order processing
-    const orderData = {
-      total: finalTotal,
-      items: cartItems,
-      shippingInfo,
-      paymentMethod
-    };
-    navigate('/order-confirmed', { state: orderData });
-  };
+  const handlePlaceOrder = async () => {
+    setIsLoading(true);
 
+    try {
+      // 1. Get user from localStorage
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        alert("You must be logged in to place an order.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Safely get the buyerId
+      let buyerId: string | undefined;
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        buyerId = parsedUser.userId; // Get the ID
+      } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
+      }
+
+      // 3. --- THIS IS THE NEW, CRITICAL CHECK ---
+      if (!buyerId) {
+        alert("Your user session is invalid. Please log out and log back in.");
+        setIsLoading(false);
+        return;
+      }
+
+      // 4. Define URLs for PayPal
+      const returnUrl = `${window.location.origin}/order-confirmed`;
+      const cancelUrl = `${window.location.origin}/checkout`;
+
+      // 5. Create the order payload
+      const orderPayload = {
+        buyerId: buyerId, // This is now guaranteed to be a string
+        paymentMethod: paymentMethod === 'cod' ? 'CoD' : 'PayPal',
+        amount: finalTotal,
+        shippingInfo: shippingInfo,
+        returnUrl: returnUrl,
+        cancelUrl: cancelUrl,
+      };
+
+      // 6. Call the backend
+      const response = await fetch('http://localhost:3000/order/createFromCart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload),
+      });
+
+      const newOrderData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(newOrderData.error || "Failed to place order.");
+      }
+
+      // 7. Handle success
+      if (response.status === 201) { // CoD
+        console.log("CoD Order placed:", newOrderData.order);
+        clearCart(); 
+        navigate('/order-confirmed', { 
+          state: {
+            order: newOrderData.order,
+            items: cartItems,
+            shippingInfo: shippingInfo,
+          } 
+        });
+      
+      } else if (response.status === 202) { // PayPal
+        console.log("PayPal order created, redirecting...");
+        clearCart(); 
+        window.location.href = newOrderData.approval_url;
+      }
+
+    } catch (error: any) {
+      console.error("Failed to place order:", error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -247,15 +317,15 @@ const Checkout: React.FC = () => {
                         <input
                           type="radio"
                           name="payment"
-                          value="razorpay"
-                          checked={paymentMethod === 'razorpay'}
+                          value="Paypal"
+                          checked={paymentMethod === 'Paypal'}
                           onChange={(e) => setPaymentMethod(e.target.value)}
                           className="mr-3"
                         />
                         <CreditCard className="w-5 h-5 text-gray-600 mr-3" />
                         <div>
-                          <div className="font-medium text-gray-900">Razorpay</div>
-                          <div className="text-sm text-gray-600">UPI, Cards, NetBanking & more</div>
+                          <div className="font-medium text-gray-900">Paypal</div>
+                          <div className="text-sm text-gray-600">Pay with your Paypal account</div>
                         </div>
                       </label>
                     </div>
@@ -270,12 +340,12 @@ const Checkout: React.FC = () => {
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="font-medium text-gray-900">
-                      {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay'}
+                      {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paypal'}
                     </p>
                     <p className="text-gray-600 text-sm">
                       {paymentMethod === 'cod' 
                         ? 'Pay when your order arrives' 
-                        : 'UPI, Cards, NetBanking & more'}
+                        : 'Pay with your Paypal account'}
                     </p>
                   </div>
                 )}
@@ -308,9 +378,10 @@ const Checkout: React.FC = () => {
 
                 <button
                   onClick={handlePlaceOrder}
+                  disabled={isLoading}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                 >
-                  Place Order - ${finalTotal.toFixed(2)}
+                  {isLoading ? 'Processing...' : `Place Order - $${finalTotal.toFixed(2)}`}
                 </button>
               </div>
             )}
@@ -349,7 +420,7 @@ const Checkout: React.FC = () => {
 
               <div className="text-sm text-gray-600">
                 <p className="mb-2">🚚 Expected delivery: 3-5 business days</p>
-                <p>📦 Free returns within 30 days</p>
+                <p>📦 Free returns within 10 days</p>
               </div>
             </div>
           </div>
@@ -360,3 +431,5 @@ const Checkout: React.FC = () => {
 };
 
 export default Checkout;
+
+

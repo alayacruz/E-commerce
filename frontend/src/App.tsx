@@ -12,8 +12,8 @@ import ProductListings from "./pages/ProductListings";
 import ProductDetails from "./pages/ProductDetails";
 import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
-import OrderPlaced from "./pages/OrderPlaced";
 import OrderConfirmed from "./pages/OrderConfirmed";
+import OrderFailed from "./pages/OrderFailed";
 import UserProfile from "./pages/UserProfile";
 import { CartProvider } from "./contexts/CartContext";
 import LogIn from "./pages/Login"; 
@@ -23,6 +23,9 @@ import AddProduct from "./pages/AddProduct";
 import AllOrders from "./pages/AllOrders";
 import Profile from "./pages/Profile";
 import { AuthProvider } from "./contexts/AuthContext"; 
+import TransactionSuccess from "./pages/TransactionSuccessful";
+import TransactionFailed from "./pages/TransactionFailed";
+import { AddReviewPage } from "./pages/AddReview";
 
 
 function AppContent() {
@@ -62,9 +65,10 @@ function AppContent() {
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/cart" element={<ShoppingCart />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-placed" element={<OrderPlaced />} />
-          <Route path="/order-confirmed" element={<OrderConfirmed />} />
+          <Route path="/order-confirmed" element={<TransactionSuccess />} />
+          <Route path="/order-failed" element={<TransactionFailed />} />
           <Route path="/profile" element={<UserProfile />} />
+          <Route path="/review-page" element={<AddReviewPage />} />
 
           {/* Seller Routes */}
           <Route
