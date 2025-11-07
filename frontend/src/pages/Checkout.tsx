@@ -82,7 +82,7 @@ const Checkout: React.FC = () => {
 
       // 4. Define URLs for PayPal
       const returnUrl = `${window.location.origin}/order-confirmed`;
-      const cancelUrl = `${window.location.origin}/checkout`;
+      const cancelUrl = `${window.location.origin}/order-failed`;
 
       // 5. Create the order payload
       const orderPayload = {

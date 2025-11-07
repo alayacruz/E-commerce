@@ -28,7 +28,6 @@ function TransactionFailed() {
         <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
           <p className="text-sm font-semibold text-gray-900 mb-2">Common issues:</p>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>• Insufficient funds</li>
             <li>• Incorrect card details</li>
             <li>• Card expired or blocked</li>
             <li>• Network connection issues</li>

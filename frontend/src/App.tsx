@@ -26,6 +26,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import TransactionSuccess from "./pages/TransactionSuccessful";
 import TransactionFailed from "./pages/TransactionFailed";
 import { AddReviewPage } from "./pages/AddReview";
+import OrderPlaced from "./pages/OrderPlaced";
 
 
 function AppContent() {
@@ -36,6 +37,8 @@ function AppContent() {
 
   const isLoginPage = location.pathname === "/";
   const isSellerPage = location.pathname.startsWith("/seller");
+  const isTransactionSuccessful = location.pathname === "/order-placed";
+  const isTransactionFailed = location.pathname === "/order-failed";
 
   const handleSellerNavigate = (page: string, productId?: string) => {
     // Check if we are going to the add/edit page
@@ -55,7 +58,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isLoginPage && !isSellerPage && <Header />}
+      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && <Header />}
       <main className="min-h-screen">
         <Routes>
           <Route path="/" element={<LogIn />} />
@@ -65,10 +68,12 @@ function AppContent() {
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/cart" element={<ShoppingCart />} />
           <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-confirmed" element={<TransactionSuccess />} />
+          {/* <Route path="/order-confirmed" element={<TransactionSuccess />} /> */}
           <Route path="/order-failed" element={<TransactionFailed />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/review-page" element={<AddReviewPage />} />
+          <Route path="/order-placed" element={<OrderPlaced />} />
+          <Route path="/order-confirmed" element={<OrderConfirmed />} />
 
           {/* Seller Routes */}
           <Route
@@ -98,7 +103,7 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {!isLoginPage && !isSellerPage && <Footer />}
+      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && <Footer />}
     </div>
   );
 }

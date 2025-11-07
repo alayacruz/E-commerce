@@ -121,7 +121,7 @@ const OrderPlaced: React.FC = () => {
               className="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
             >
               <Home className="w-5 h-5 mr-2" />
-              Back to Home
+              Go to Home
             </Link>
             <Link
               to="/products"

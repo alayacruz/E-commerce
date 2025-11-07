@@ -17,7 +17,7 @@ function TransactionSuccess() {
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Thank you for your purchase. Your order has been confirmed.
+          Thank you for your purchase. Your order has been confirmed and is being prepared for the shipment. 
         </p>
 
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -43,9 +43,6 @@ function TransactionSuccess() {
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mt-6">
-          A confirmation email has been sent to your registered email address.
-        </p>
       </div>
     </div>
   );
