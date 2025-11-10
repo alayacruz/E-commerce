@@ -13,11 +13,16 @@ interface FormData {
   firstName: string;
   lastName: string;
   phone: string;
-  address: string;
+  street: string;
+  city: string;
+  state: string;
+  country: string;
+  pin: string;
   gstNumber?: string;
   gender: string;
   dob: string;
 }
+
 
 const LogIn: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +41,11 @@ const LogIn: React.FC = () => {
     firstName: "",
     lastName: "",
     phone: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    country: "",
+    pin: "",
     gstNumber: "",
     gender: "",
     dob: "",
@@ -94,13 +103,19 @@ const LogIn: React.FC = () => {
       const endpoint = "http://localhost:3000/auth/signup"; // Assuming your server route is /auth
 
       // Construct the body based on user type
-      const requestBody = {
+     const requestBody = {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        phoneNum: formData.phone, // Match backend expectation
-        address: { street: formData.address, city: "City", state: "State", country: "Country", pin: "12345" }, // Match backend expectation for object
+        phoneNum: formData.phone, 
+        address: { 
+          street: formData.street, 
+          city: formData.city, 
+          state: formData.state, 
+          country: formData.country, 
+          pin: formData.pin 
+        }, 
         isSeller: isSeller,
         gstNo: isSeller ? formData.gstNumber : undefined,
         gender: !isSeller ? formData.gender : undefined,
@@ -185,7 +200,11 @@ const LogIn: React.FC = () => {
       firstName: "",
       lastName: "",
       phone: "",
-      address: "",
+      street: "",
+      city: "",
+      state: "",
+      country: "",
+      pin: "",
       gender: "",
       dob: "",
       gstNumber: "",
@@ -193,19 +212,19 @@ const LogIn: React.FC = () => {
   };
 
   return (
-    <section className="flex flex-col md:flex-row items-center overflow-hidden justify-center min-h-screen bg-cover bg-center relative text-black"
+    <section className="flex flex-col md:flex-row items-center  overflow-x-hidden  justify-center min-h-9 bg-cover bg-center relative text-black"
     style={{ backgroundImage: `url(${login_hero})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', height: '100vh' }}>
       <Toaster position="bottom-right" reverseOrder={false} />
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-center w-full">
         {/* Left side - form */}
-        <div className="relative z-10 flex flex-col justify-center md:w-1/2 w-full h-screen  pl-20 md:pl-32 pr-10 md:pr-0 ml-50">
-          <div className="text-4xl font-bold text-center mb-6 text-white flex justify-center gap-4 items-center">
+        <div className="relative z-10 flex flex-col justify-center md:w-1/2 w-full pt-20  pl-20 md:pl-32 pr-10 md:pr-0 ml-50">
+          <div className="text-5xl font-bold text-center mb-6  text-white flex justify-center gap-4 items-center ">
             <ShoppingCart size={36} />
             Shop Hub
           </div>
 
           {/* Seller/Buyer Toggle */}
-          <div className="flex justify-center bg-blue-100 rounded-full p-1 mb-6 w-3/4 mx-auto">
+          <div className="flex justify-center bg-blue-100 rounded-full p-1 mb-6 w-2/4 mx-auto h-13 ">
             <button
               type="button"
               onClick={() => setIsSeller(false)}
@@ -244,7 +263,7 @@ const LogIn: React.FC = () => {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
-                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <input
                   type="text"
@@ -252,7 +271,7 @@ const LogIn: React.FC = () => {
                   placeholder="Last Name"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
@@ -263,18 +282,58 @@ const LogIn: React.FC = () => {
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+                className="w-full p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
 
               <input
                 type="text"
-                name="address"
-                placeholder="Address (Street)"
-                value={formData.address}
+                name="street"
+                placeholder="Street Address"
+                value={formData.street}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+                className="w-full p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
+              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                <input
+                  type="text"
+                  name="city"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <input
+                  type="text"
+                  name="state"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                <input
+                  type="text"
+                  name="country"
+                  placeholder="Country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <input
+                  type="text"
+                  name="pin"
+                  placeholder="PIN Code"
+                  value={formData.pin}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
             </>
           )}
 
@@ -290,14 +349,14 @@ const LogIn: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/3 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <select
                   name="gender"
                   value={formData.gender}
                   onChange={handleSelectChange}
                   required
-                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-gray-500"
+                  className="w-full md:w-1/3 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm text-gray-500"
                 >
                   <option value="" disabled>Select Gender</option>
                   <option value="male">Male</option>
@@ -311,7 +370,7 @@ const LogIn: React.FC = () => {
                   value={formData.dob}
                   onChange={handleInputChange}
                   required
-                  className="w-full md:w-1/3 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
+                  className="w-full md:w-1/3 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-500"
                 />
               </>
             )}
@@ -326,7 +385,7 @@ const LogIn: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <input
                   type="text"
@@ -335,7 +394,7 @@ const LogIn: React.FC = () => {
                   value={formData.gstNumber || ""}
                   onChange={handleInputChange}
                   required
-                  className="w-full md:w-1/2 p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full md:w-1/2 p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </>
             )}
@@ -349,7 +408,7 @@ const LogIn: React.FC = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             )}
           </div>
@@ -365,7 +424,7 @@ const LogIn: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+              className="w-full p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
             />
             <button
               type="button"
@@ -386,7 +445,7 @@ const LogIn: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full p-3 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+                className="w-full p-2 bg-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
               />
               <button
                 type="button"
@@ -424,6 +483,7 @@ const LogIn: React.FC = () => {
       </div>
 
 {/* Right side - image */}
+
         <div className="hidden md:block md:w-1/2 h-screen p-0 m-0 relative">
           <img
             src={LoginHero}

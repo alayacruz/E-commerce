@@ -263,27 +263,38 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
 });
 
 authRouter.post("/addAddresses", async (req, res) => {
-  const { addresses, userId } = req.body; //addresses is an array of address objects
-  // street        String
-  // city          String
-  // state         String
-  // country       String
-  // pin           String
-  const addressInserts = addresses.map((e) => {
-    e.user_id = userId;
-    return e;
-  });
-  if (!userId || addresses.length == 0)
+  try {
+    const { addresses, userId } = req.body; // addresses = array of objects
+
+    if (!userId || !Array.isArray(addresses) || addresses.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "User ID not provided or addresses array is empty." });
+    }
+
+    // Attach userId to each address object
+    const addressInserts = addresses.map((addr) => ({
+      user_id: userId,
+      street: addr.street,
+      city: addr.city,
+      state: addr.state,
+      country: addr.country,
+      pin: addr.pin,
+    }));
+
+    // Insert multiple addresses
+    const newAddresses = await prisma.address.createMany({
+      data: addressInserts,
+      skipDuplicates: true,
+    });
+
     return res
-      .status(400)
-      .json({ error: "User ID either not given/Addresses is empty." });
-  const newAddresses = await prisma.address.createMany({
-    data: addressInserts,
-    skipDuplicates: true,
-  });
-  return res
-    .status(200)
-    .json({ message: "New addresses were successfully added." });
+      .status(200)
+      .json({ message: "New addresses were successfully added.", count: newAddresses.count });
+  } catch (err) {
+    console.error("Error adding addresses:", err);
+    return res.status(500).json({ error: "Internal server error." });
+  }
 });
 
 authRouter.delete("/:userId", authMiddleware, async (req, res) => {
