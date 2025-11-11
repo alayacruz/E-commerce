@@ -76,7 +76,6 @@ function AppContent() {
           <Route path="/review-page" element={<AddReviewPage />} />
           {/* <Route path="/order-placed" element={<OrderPlaced />} /> */}
           <Route path="/order-confirmed" element={<OrderConfirmed />} />
-          <Route path="/track-order" element={<UserOrders />} />
 
           {/* Seller Routes */}
           <Route

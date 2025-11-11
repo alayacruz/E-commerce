@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const orderRouter = express.Router();
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
 const PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com";
 
 /**
@@ -327,6 +327,12 @@ orderRouter.post("/buyNow", async (req, res) => {
       {timeout: 10000,
     });
 
+    const orderWithPayment = {
+      ...transactionResult,
+      paymentMethod: paymentMethod // This is 'CoD' or 'PayPal' from req.body
+    };
+  
+
     // 5. Send PayPal link back to client (If applicable)
     if (paymentMethod === "PayPal" && approvalUrl) {
       return res.status(202).json({
@@ -429,6 +435,7 @@ orderRouter.post("/createFromCart", async (req, res) => {
 
       // 8. Create OrderItems from CartItems (using createMany)
       const orderItemsData = cart.items.map((item) => ({
+        order_item_id: generateOrderItemId(order.order_id, item.productId),
         order_id: order.order_id,
         product_id: item.productId,
         quantity: item.quantity,
@@ -482,13 +489,20 @@ orderRouter.post("/createFromCart", async (req, res) => {
     {
       timeout: 10000, 
     });
+
+    // This is the object you created
+    const orderWithPayment = {
+      ...newOrder, // 'newOrder' is the transaction result
+      paymentMethod: paymentMethod // This is 'CoD' or 'PayPal' from req.body
+    };
+
     // --- End Atomic Database Transaction ---
 
     // 12. Send response back to client
     if (paymentMethod === "PayPal" && approvalUrl) {
       return res.status(202).json({
         message: "PayPal Order created. Redirect buyer for approval.",
-        order: newOrder,
+        order: orderWithPayment,
         approval_url: approvalUrl,
         paypal_order_id: paymentExternalId,
       });
@@ -496,12 +510,25 @@ orderRouter.post("/createFromCart", async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully (CoD).",
-      order: newOrder,
+      order: orderWithPayment,
     });
     
   } catch (error) {
     console.error("Failed to place order:", error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+orderRouter.patch("/:orderId/deliver", async (req, res) => {
+  const { orderId } = req.params;
+  try {
+    const updatedOrder = await prisma.order.update({
+      where: { order_id: orderId },
+      data: { status: "DELIVERED" },
+    });
+    res.json(updatedOrder);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to mark order as delivered." });
   }
 });
 

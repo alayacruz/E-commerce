@@ -25,7 +25,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
   const [loading, setLoading] = useState(true);
   const [sellerId, setSellerId] = useState<string | null>(null);
 
-  // ✅ Fetch orders when the component mounts
   useEffect(() => {
     const fetchSellerOrders = async () => {
       const userString = localStorage.getItem("user");
@@ -41,7 +40,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
         return;
       }
       
-      setSellerId(currentSellerId); // Save sellerId for later
+      setSellerId(currentSellerId); 
 
       try {
         setLoading(true);
@@ -60,7 +59,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     fetchSellerOrders();
   }, []);
 
-  // ✅ Helper function to update order status locally
   const updateLocalOrderStatus = (orderId: string, newStatus: string) => {
     setOrders(currentOrders =>
       currentOrders.map(order =>
@@ -69,7 +67,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     );
   };
 
-  // ✅ Function to handle "Confirm Order"
   const handleConfirmOrder = async (orderId: string) => {
     if (!window.confirm("Are you sure you want to confirm this order? This will notify the buyer.")) return;
 
@@ -89,7 +86,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     setOpenMenu(null);
   };
 
-  // ✅ Function to handle "Ship Order"
   const handleShipOrder = async (orderId: string) => {
     const carrier = prompt("Please enter the shipping carrier (e.g., FedEx, UPS):");
     if (!carrier) return;
@@ -115,6 +111,24 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     setOpenMenu(null);
   };
 
+  const handleDeliverOrder = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to mark this order as delivered? This will notify the buyer.")) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/orders/${orderId}/deliver`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update order to delivered');
+      }
+      // Update state locally
+      updateLocalOrderStatus(orderId, 'DELIVERED');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to update order to delivered.');
+    }
+    setOpenMenu(null);
+  };
   
   // ✅ FIX: Use 'orders' state and uppercase statuses
   const filterTabs = [
@@ -244,6 +258,13 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                                   onClick={() => handleShipOrder(order.order_id)}
                                   className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 font-medium">
                                   Ship Order
+                                </button>
+                              )}
+                              {order.status === 'SHIPPED' && (
+                                <button 
+                                  onClick={() => handleDeliverOrder(order.order_id)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 font-medium">
+                                  Delivered
                                 </button>
                               )}
                               

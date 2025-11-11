@@ -9,9 +9,9 @@ interface Product {
   name: string;
   price: number;
   originalPrice?: number;
-  imageUrls: string[]; // This is an array of Cloudinary URLs
+  imageUrls: string[]; 
   rating: number;
-  reviews: number; // This is the review count
+  reviews: number; 
   description: string;
   features: string[];
   specifications: Record<string, string>;
