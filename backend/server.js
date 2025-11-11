@@ -49,7 +49,7 @@ app.use("/auth", authRouter);
 app.use("/search", searchRouter);
 app.use("/seller", sellerRouter);
 app.use("/cart", cartRouter);
-app.use("/review", reviewRouter);
+app.use("/reviews", reviewRouter);
 app.use("/orders", orderRouter);
 app.use("/category", categoryRouter);
 app.use("/products", productRouter);

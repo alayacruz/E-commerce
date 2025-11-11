@@ -21,18 +21,20 @@ interface Product {
 
 interface Review {
   id: string;
-  author: string;
+  user: {
+    username: string; 
+  };
   rating: number;
-  date: string;
-  comment: string;
-  helpful: number;
+  createdAt: string; 
+  title: string;     
+  comment: string;  
 }
 
 interface SimilarProduct {
   id: string;
   name: string;
   price: number;
-  image: string; // This is a single Cloudinary URL
+  image: string; 
   rating: number;
 }
 
@@ -69,7 +71,7 @@ const ProductDetails: React.FC = () => {
         // --- 3. FETCH ALL THREE API ENDPOINTS ---
         const [productRes, reviewsRes, similarRes] = await Promise.all([
           fetch(`http://localhost:3000/products/${id}`),
-          fetch(`http://localhost:3000/products/${id}/reviews`),
+          fetch(`http://localhost:3000/reviews/product/${id}`), 
           fetch(`http://localhost:3000/products/${id}/similar`)
         ]);
 
@@ -332,16 +334,12 @@ const handleAddToCart = async () => { // 1. Make the function async
         </div>
 
         {/* Reviews */}
-        <div className="mt-8">
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Reviews</h2>
-            <div className="space-y-6">
-              {reviews.length === 0 && <p className="text-gray-600">No reviews yet for this product.</p>}
-              {reviews.map((review) => (
+        {reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-4">
-                      <span className="font-medium text-gray-900">{review.author}</span>
+                      {/* Use the user's name from the review data */}
+                      <span className="font-medium text-gray-900">{review.user.username}</span>
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
                           <Star
@@ -353,17 +351,16 @@ const handleAddToCart = async () => { // 1. Make the function async
                         ))}
                       </div>
                     </div>
-                    <span className="text-sm text-gray-500">{review.date}</span>
+                    {/* Format the 'createdAt' date */}
+                    <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                   </div>
+                  {/* Display the review title */}
+                  <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4>
                   <p className="text-gray-700 mb-2">{review.comment}</p>
-                  <button className="text-sm text-gray-500 hover:text-gray-700">
-                    Helpful ({review.helpful})
-                  </button>
+                  {/* 'Helpful' button is removed as it wasn't in your backend model */}
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
+           
 
         {/* Similar Products */}
         <div className="mt-16">

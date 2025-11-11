@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import express from "express";
 import prisma from "./db.js";
+import authMiddleware from "../middleware/auth.middleware.js";
 
 dotenv.config();
 const reviewRouter = express.Router();
@@ -9,19 +10,29 @@ const reviewRouter = express.Router();
 // Create a review
 reviewRouter.post("/", async (req, res) => {
   try {
-    const { userId, productId, rating, comment } = req.body;
+    const { userId, productId, rating, comment, title } = req.body;
+    
     if (!userId || !productId || !rating) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
     const review = await prisma.review.create({
-      data: { userId, productId, rating, comment },
+      data: {
+        title: title,
+        comment: comment,
+        rating: parseInt(rating, 10), 
+        user: {
+          connect: { user_id: userId } 
+        },
+        product: {
+          connect: { id: productId } 
+        }
+      },
     });
 
     res.status(201).json(review);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to create review" });
+    console.error("Error creating review:", err); 
+    res.status(500).json({ error: "Failed to create review", details: err.message });
   }
 });
 
@@ -42,7 +53,17 @@ reviewRouter.get("/product/:productId", async (req, res) => {
     const { productId } = req.params;
     const reviews = await prisma.review.findMany({
       where: { productId },
-      include: { user: true }, // if you want user info with each review
+      include: { 
+        user: { 
+          select: {
+            first_name: true,
+            last_name: true
+          }
+        } 
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
     res.status(200).json(reviews);
   } catch (err) {
@@ -66,6 +87,50 @@ reviewRouter.put("/:id", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update review" });
+  }
+});
+
+reviewRouter.get("/seller", authMiddleware , async (req, res) => {
+  try {
+    const sellerId = req.user.userId; // Get seller ID from token
+
+    // 1. Find all product IDs belonging to this seller
+    const sellerProducts = await prisma.product.findMany({
+      where: { seller_id: sellerId },
+      select: { productId: true }
+    });
+
+    const productIds = sellerProducts.map(p => p.id);
+
+    if (productIds.length === 0) {
+      return res.json([]); // No products, so no reviews
+    }
+
+    // 2. Find all reviews for those product IDs
+    const reviews = await prisma.review.findMany({
+      where: {
+        productId: {
+          in: productIds
+        }
+      },
+      include: {
+        user: { // User who wrote the review
+          select: { first_name: true,  
+          last_name: true }
+        },
+        product: { // Product the review is for
+          select: { name: true, imageUrls: true }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json(reviews);
+  } catch (err) {
+    console.error("Error fetching seller reviews:", err);
+    res.status(500).json({ error: "Failed to fetch seller reviews" });
   }
 });
 

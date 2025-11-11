@@ -115,9 +115,28 @@ orderRouter.get("/byBuyer", async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       where: { buyer_id: buyerId },
-      include: {
-        items: { include: { product: true } },
-      },
+        include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                seller: {
+                  include: {
+                    user: {
+                      select: {
+                        email_id: true,
+                        phoneNumbers: {
+                          select: { phone_no: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } 
+      }
+    },
       orderBy: { order_date: 'desc' },
     });
     res.json(orders);

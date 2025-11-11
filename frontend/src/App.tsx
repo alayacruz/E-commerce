@@ -73,7 +73,7 @@ function AppContent() {
           <Route path="/payment-confirmed" element={<TransactionSuccess />} />
           <Route path="/payment-failed" element={<TransactionFailed />} />
           <Route path="/profile" element={<UserProfile />} />
-          <Route path="/review-page" element={<AddReviewPage />} />
+          <Route path="/add-review" element={<AddReviewPage />} />
           {/* <Route path="/order-placed" element={<OrderPlaced />} /> */}
           <Route path="/order-confirmed" element={<OrderConfirmed />} />
 

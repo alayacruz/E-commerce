@@ -3,8 +3,6 @@ import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import express from "express";
 import jwt from "jsonwebtoken";
-// --- 1. IMPORT YOUR AUTH MIDDLEWARE ---
-// (Make sure the path is correct)
 import authMiddleware from "../middleware/auth.middleware.js";
 import prisma from "./db.js";
 
