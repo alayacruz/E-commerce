@@ -276,8 +276,11 @@ const UserProfile: React.FC = () => {
       }
 
       const savedUser = await response.json();
+
+      // Update localStorage with the server-confirmed data
       localStorage.setItem("user", JSON.stringify(savedUser));
 
+      // Update the state with the new 'dateJoined' (in case it was missing)
       setUserInfo(prev => ({
         ...prev,
         name: savedUser.username,
