@@ -27,7 +27,7 @@ function TransactionSuccess() {
 
         <div className="space-y-3">
           <button
-            onClick={() => window.location.href = '/orders'}
+            onClick={() => window.location.href = '/order-confirmed'}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <ShoppingBag className="w-5 h-5" />

@@ -6,10 +6,10 @@ import multer from "multer";
 import { Client } from "@elastic/elasticsearch";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import prisma from "./db.js";
 
 dotenv.config();
 const sellerRouter = express.Router();
-const prisma = new PrismaClient();
 
 const elasticClient = new Client({
   node: process.env.ELASTIC_ENDPOINT,

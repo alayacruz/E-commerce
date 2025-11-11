@@ -27,6 +27,7 @@ import TransactionSuccess from "./pages/TransactionSuccessful";
 import TransactionFailed from "./pages/TransactionFailed";
 import { AddReviewPage } from "./pages/AddReview";
 import OrderPlaced from "./pages/OrderPlaced";
+import UserOrders from "./pages/UserOrders";
 
 
 function AppContent() {
@@ -37,8 +38,9 @@ function AppContent() {
 
   const isLoginPage = location.pathname === "/";
   const isSellerPage = location.pathname.startsWith("/seller");
-  const isTransactionSuccessful = location.pathname === "/order-placed";
-  const isTransactionFailed = location.pathname === "/order-failed";
+  const isTransactionSuccessful = location.pathname === "/payment-confirmed";
+  const isTransactionFailed = location.pathname === "/payment-failed";
+  const isOrderConfirmed = location.pathname === "/order-confirmed";
 
   const handleSellerNavigate = (page: string, productId?: string) => {
     // Check if we are going to the add/edit page
@@ -58,7 +60,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && <Header />}
+      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && !isOrderConfirmed && <Header />}
       <main className="min-h-screen">
         <Routes>
           <Route path="/" element={<LogIn />} />
@@ -68,12 +70,13 @@ function AppContent() {
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/cart" element={<ShoppingCart />} />
           <Route path="/checkout" element={<Checkout />} />
-          {/* <Route path="/order-confirmed" element={<TransactionSuccess />} /> */}
-          <Route path="/order-failed" element={<TransactionFailed />} />
+          <Route path="/payment-confirmed" element={<TransactionSuccess />} />
+          <Route path="/payment-failed" element={<TransactionFailed />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/review-page" element={<AddReviewPage />} />
-          <Route path="/order-placed" element={<OrderPlaced />} />
+          {/* <Route path="/order-placed" element={<OrderPlaced />} /> */}
           <Route path="/order-confirmed" element={<OrderConfirmed />} />
+          <Route path="/track-order" element={<UserOrders />} />
 
           {/* Seller Routes */}
           <Route
@@ -103,7 +106,7 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && <Footer />}
+      {!isLoginPage && !isTransactionSuccessful && !isTransactionFailed && !isSellerPage && !isOrderConfirmed && <Footer />}
     </div>
   );
 }

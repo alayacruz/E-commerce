@@ -6,11 +6,11 @@ import jwt from "jsonwebtoken";
 // --- 1. IMPORT YOUR AUTH MIDDLEWARE ---
 // (Make sure the path is correct)
 import authMiddleware from "../middleware/auth.middleware.js";
+import prisma from "./db.js";
 
 dotenv.config();
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
 const authRouter = express.Router();
-const prisma = new PrismaClient();
 
 authRouter.post("/signup", async (req, res) => {
   const {
@@ -140,8 +140,8 @@ authRouter.post("/login", async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { email_id: email },
     include: {
-      phoneNumbers: true, // <-- This will fetch the related phone numbers
-      addresses: true, // <-- This will fetch the related addresses
+      phoneNumbers: true, 
+      addresses: true,
     },
   });
 
@@ -153,6 +153,23 @@ authRouter.post("/login", async (req, res) => {
 
   if (!match) {
     return res.status(401).json({ message: "Incorrect password" });
+  }
+
+  const buyer = await prisma.buyer.findUnique({
+    where: { buyer_id: user.user_id },
+  });
+
+  // set usertype - buyer or seller
+  let userType = "unknown";
+  if (buyer) {
+    userType = "buyer";
+  } else {
+    const seller = await prisma.seller.findUnique({
+      where: { seller_id: user.user_id },
+    });
+    if (seller) {
+      userType = "seller";
+    }
   }
 
   // handling null last name
@@ -167,6 +184,7 @@ authRouter.post("/login", async (req, res) => {
       username: username,
       email: user.email_id,
       firstName: user.first_name,
+      userType: userType,
     },
     SECRET_KEY,
     {
@@ -182,7 +200,8 @@ authRouter.post("/login", async (req, res) => {
     firstName: user.first_name,
     phoneNumbers: user.phoneNumbers.map((p) => p.phone_no),
     addresses: user.addresses,
-    createdAt: user.createdAt, // <-- ADD THIS LINE
+    createdAt: user.createdAt, 
+    userType: userType, 
   };
   res.json({ message: "Login successful", token, userInfo });
 });
@@ -263,27 +282,38 @@ authRouter.put("/profile", authMiddleware, async (req, res) => {
 });
 
 authRouter.post("/addAddresses", async (req, res) => {
-  const { addresses, userId } = req.body; //addresses is an array of address objects
-  // street        String
-  // city          String
-  // state         String
-  // country       String
-  // pin           String
-  const addressInserts = addresses.map((e) => {
-    e.user_id = userId;
-    return e;
-  });
-  if (!userId || addresses.length == 0)
+  try {
+    const { addresses, userId } = req.body; // addresses = array of objects
+
+    if (!userId || !Array.isArray(addresses) || addresses.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "User ID not provided or addresses array is empty." });
+    }
+
+    // Attach userId to each address object
+    const addressInserts = addresses.map((addr) => ({
+      user_id: userId,
+      street: addr.street,
+      city: addr.city,
+      state: addr.state,
+      country: addr.country,
+      pin: addr.pin,
+    }));
+
+    // Insert multiple addresses
+    const newAddresses = await prisma.address.createMany({
+      data: addressInserts,
+      skipDuplicates: true,
+    });
+
     return res
-      .status(400)
-      .json({ error: "User ID either not given/Addresses is empty." });
-  const newAddresses = await prisma.address.createMany({
-    data: addressInserts,
-    skipDuplicates: true,
-  });
-  return res
-    .status(200)
-    .json({ message: "New addresses were successfully added." });
+      .status(200)
+      .json({ message: "New addresses were successfully added.", count: newAddresses.count });
+  } catch (err) {
+    console.error("Error adding addresses:", err);
+    return res.status(500).json({ error: "Internal server error." });
+  }
 });
 
 authRouter.delete("/:userId", authMiddleware, async (req, res) => {

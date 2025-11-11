@@ -3,9 +3,9 @@ import dotenv from "dotenv";
 import express from "express";
 import { Client } from "@elastic/elasticsearch";
 import { error } from "console";
+import prisma from "./db.js";
 
 dotenv.config();
-const prisma = new PrismaClient();
 const searchRouter = express.Router();
 const elasticClient = new Client({
   node: process.env.ELASTIC_ENDPOINT,

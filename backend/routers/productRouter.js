@@ -1,8 +1,8 @@
 import express from "express";
 // --- CHANGE 1: Import 'Prisma' for our recursive query ---
 import { PrismaClient, Prisma } from "@prisma/client";
+import prisma from "./db.js";
 
-const prisma = new PrismaClient();
 const productRouter = express.Router();
 
 // In your productRouter.js file:

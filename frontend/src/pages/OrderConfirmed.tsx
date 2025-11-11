@@ -1,46 +1,101 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { CheckCircle, Package, Truck, Calendar, MapPin, CreditCard, Download, Share2, Star } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  CheckCircle,
+  Package,
+  Truck,
+  Calendar,
+  MapPin,
+  CreditCard,
+  Download,
+  Share2,
+  Star,
+} from "lucide-react";
+
+const getTrackingSteps = (status: string) => {
+  const steps = [
+    {
+      id: 1,
+      title: "Order Confirmed",
+      description: "Your order has been received.",
+      completed: false,
+      current: false,
+    },
+    {
+      id: 2,
+      title: "Processing",
+      description: "Your order is being prepared by the seller.",
+      completed: false,
+      current: false,
+    },
+    {
+      id: 3,
+      title: "Shipped",
+      description: "Your order is on its way.",
+      completed: false,
+      current: false,
+    },
+    {
+      id: 4,
+      title: "Delivered",
+      description: "Your order has been delivered.",
+      completed: false,
+      current: false,
+    },
+  ];
+
+  if (status === "PENDING" || status === "PAYMENT_INITIATED") {
+    steps[0].current = true;
+  } else if (status === "PROCESSING") {
+    steps[0].completed = true;
+    steps[1].current = true;
+  } else if (status === "SHIPPED") {
+    steps[0].completed = true;
+    steps[1].completed = true;
+    steps[2].current = true;
+  } else if (status === "DELIVERED") {
+    steps.forEach((step) => (step.completed = true));
+  } else {
+    //cncelled
+    steps[0].current = true;
+  }
+
+  return steps;
+};
 
 const OrderConfirmed: React.FC = () => {
   const location = useLocation();
+  const { order, items, shippingInfo } = location.state || {};
   const [orderDetails] = useState({
-    orderNumber: 'SH' + Math.random().toString(36).substr(2, 8).toUpperCase(),
-    orderDate: new Date().toISOString(),
-    estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    total: location.state?.total || 299.99,
-    items: location.state?.items || [
-      {
-        id: 1,
-        name: 'Wireless Bluetooth Headphones',
-        price: 199,
-        quantity: 1,
-        image: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=200'
-      },
-      {
-        id: 2,
-        name: 'Smart Fitness Watch',
-        price: 249,
-        quantity: 1,
-        image: 'https://images.pexels.com/photos/393047/pexels-photo-393047.jpeg?auto=compress&cs=tinysrgb&w=200'
-      }
-    ],
+    orderNumber: order?.order_id || "N/A",
+    orderDate: order?.order_date || new Date().toISOString(),
+    estimatedDelivery: new Date(
+      Date.now() + 5 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+    total: Number(order?.amount || 0),
+    items: items || [],
     shippingAddress: {
-      name: 'John Doe',
-      address: '123 Main Street',
-      city: 'New York',
-      zipCode: '10001',
-      phone: '+1 (555) 123-4567'
+      name: shippingInfo?.fullName || "N/A",
+      address: shippingInfo?.address || "N/A",
+      city: shippingInfo?.city || "N/A",
+      zipCode: shippingInfo?.zipCode || "N/A",
+      phone: shippingInfo?.phone || "N/A",
     },
-    paymentMethod: 'Cash on Delivery'
+    paymentMethod:
+      order?.paymentMethod === "CoD" ? "Cash on Delivery" : "PayPal",
+    status: order?.status || "PENDING",
   });
 
-  const [trackingSteps] = useState([
-    { id: 1, title: 'Order Confirmed', description: 'Your order has been placed successfully', completed: true, current: false },
-    { id: 2, title: 'Processing', description: 'We are preparing your items', completed: false, current: true },
-    { id: 3, title: 'Shipped', description: 'Your order is on the way', completed: false, current: false },
-    { id: 4, title: 'Delivered', description: 'Order delivered to your address', completed: false, current: false }
-  ]);
+  const trackingSteps = getTrackingSteps(orderDetails.status);
+
+  const handleTrackOrders = () => {
+    navigate("/profile", { state: { defaultTab: "orders" } });
+  };
+
+  const handleDownloadInvoice = () => {
+    alert("Invoice download functionality is not implemented yet.");
+    // yet to be done 
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
@@ -57,12 +112,16 @@ const OrderConfirmed: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Order Confirmed! 🎉
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Thank you for your purchase! Your order <span className="font-semibold text-blue-600">#{orderDetails.orderNumber}</span> has been confirmed and is being processed.
+            Thank you for your purchase! Your order{" "}
+            <span className="font-semibold text-blue-600">
+              #{orderDetails.orderNumber}
+            </span>{" "}
+            has been confirmed and is being processed.
           </p>
         </div>
 
@@ -71,19 +130,29 @@ const OrderConfirmed: React.FC = () => {
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Order #{orderDetails.orderNumber}</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  Order #{orderDetails.orderNumber}
+                </h2>
                 <p className="text-blue-100">
-                  Placed on {new Date(orderDetails.orderDate).toLocaleDateString('en-US', { 
-                    weekday: 'long',
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
+                  Placed on{" "}
+                  {new Date(orderDetails.orderDate).toLocaleDateString(
+                    "en-US",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )}
                 </p>
               </div>
               <div className="mt-4 md:mt-0 text-right">
-                <p className="text-3xl font-bold">${orderDetails.total.toFixed(2)}</p>
-                <p className="text-blue-100">{orderDetails.items.length} items</p>
+                <p className="text-3xl font-bold">
+                  ${orderDetails.total.toFixed(2)}
+                </p>
+                <p className="text-blue-100">
+                  {orderDetails.items.length} items
+                </p>
               </div>
             </div>
           </div>
@@ -91,21 +160,28 @@ const OrderConfirmed: React.FC = () => {
           <div className="p-6">
             {/* Order Items */}
             <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Items Ordered</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Items Ordered
+              </h3>
               <div className="space-y-4">
-                {orderDetails.items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                {orderDetails.items.map((item: any) => (
+                  <div
+                    key={item.cartItemId || item.product.productId}
+                    className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg"
+                  >
                     <img
-                      src={item.image}
-                      alt={item.name}
+                      src={item.product.imageUrls[0]}
+                      alt={item.product.name}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{item.name}</h4>
+                      <h4 className="font-medium text-gray-900">
+                        {item.product.name}
+                      </h4>
                       <p className="text-gray-600">Quantity: {item.quantity}</p>
                     </div>
                     <div className="text-lg font-semibold text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(item.product.price * item.quantity).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -120,10 +196,19 @@ const OrderConfirmed: React.FC = () => {
                   Delivery Address
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="font-medium text-gray-900">{orderDetails.shippingAddress.name}</p>
-                  <p className="text-gray-600">{orderDetails.shippingAddress.address}</p>
-                  <p className="text-gray-600">{orderDetails.shippingAddress.city}, {orderDetails.shippingAddress.zipCode}</p>
-                  <p className="text-gray-600">{orderDetails.shippingAddress.phone}</p>
+                  <p className="font-medium text-gray-900">
+                    {orderDetails.shippingAddress.name}
+                  </p>
+                  <p className="text-gray-600">
+                    {orderDetails.shippingAddress.address}
+                  </p>
+                  <p className="text-gray-600">
+                    {orderDetails.shippingAddress.city},{" "}
+                    {orderDetails.shippingAddress.zipCode}
+                  </p>
+                  <p className="text-gray-600">
+                    {orderDetails.shippingAddress.phone}
+                  </p>
                 </div>
               </div>
 
@@ -133,8 +218,12 @@ const OrderConfirmed: React.FC = () => {
                   Payment Method
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="font-medium text-gray-900">{orderDetails.paymentMethod}</p>
-                  <p className="text-gray-600 text-sm">Payment will be collected upon delivery</p>
+                  <p className="font-medium text-gray-900">
+                    {orderDetails.paymentMethod}
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Payment will be collected upon delivery
+                  </p>
                 </div>
               </div>
             </div>
@@ -145,13 +234,17 @@ const OrderConfirmed: React.FC = () => {
                 <div className="flex items-center">
                   <Calendar className="w-6 h-6 text-blue-600 mr-3" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Expected Delivery</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Expected Delivery
+                    </h3>
                     <p className="text-blue-600 font-medium">
-                      {new Date(orderDetails.estimatedDelivery).toLocaleDateString('en-US', { 
-                        weekday: 'long',
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
+                      {new Date(
+                        orderDetails.estimatedDelivery
+                      ).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
                       })}
                     </p>
                   </div>
@@ -164,21 +257,36 @@ const OrderConfirmed: React.FC = () => {
 
         {/* Order Tracking */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Order Tracking</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            Order Tracking
+          </h3>
           <div className="space-y-4">
-            {trackingSteps.map((step, index) => (
+            {/* This map will now work! */}
+            {trackingSteps.map((step) => (
               <div key={step.id} className="flex items-center">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.completed ? 'bg-green-600' : step.current ? 'bg-blue-600' : 'bg-gray-300'
-                }`}>
+                <div
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    step.completed
+                      ? "bg-green-600"
+                      : step.current
+                      ? "bg-blue-600"
+                      : "bg-gray-300"
+                  }`}
+                >
                   {step.completed ? (
                     <CheckCircle className="w-5 h-5 text-white" />
                   ) : (
-                    <span className="text-white text-sm font-medium">{step.id}</span>
+                    <span className="text-white text-sm font-medium">
+                      {step.id}
+                    </span>
                   )}
                 </div>
                 <div className="ml-4 flex-1">
-                  <h4 className={`font-medium ${step.current ? 'text-blue-600' : 'text-gray-900'}`}>
+                  <h4
+                    className={`font-medium ${
+                      step.current ? "text-blue-600" : "text-gray-900"
+                    }`}
+                  >
                     {step.title}
                   </h4>
                   <p className="text-gray-600 text-sm">{step.description}</p>
@@ -195,7 +303,10 @@ const OrderConfirmed: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-          <button className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105">
+          <button
+            onClick={handleDownloadInvoice}
+            className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
+          >
             <Download className="w-5 h-5 mr-2" />
             Download Invoice
           </button>
@@ -203,13 +314,13 @@ const OrderConfirmed: React.FC = () => {
             <Share2 className="w-5 h-5 mr-2" />
             Share Order
           </button>
-          <Link
-            to="/profile"
+          <button
+            onClick={handleTrackOrders}
             className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white font-semibold rounded-xl hover:bg-gray-700 transition-all duration-200 transform hover:scale-105"
           >
             <Package className="w-5 h-5 mr-2" />
             Track All Orders
-          </Link>
+          </button>
         </div>
 
         {/* Navigation Buttons */}
@@ -230,35 +341,64 @@ const OrderConfirmed: React.FC = () => {
 
         {/* Additional Info */}
         <div className="mt-12 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">What happens next?</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+            What happens next?
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Package className="w-6 h-6 text-white" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Order Processing</h4>
-              <p className="text-gray-600 text-sm">We'll prepare your items with care and quality check each product</p>
+              <h4 className="font-medium text-gray-900 mb-2">
+                Order Processing
+              </h4>
+              <p className="text-gray-600 text-sm">
+                We'll prepare your items with care and quality check each
+                product
+              </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Truck className="w-6 h-6 text-white" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Shipping Updates</h4>
-              <p className="text-gray-600 text-sm">You'll receive real-time tracking information via email and SMS</p>
+              <h4 className="font-medium text-gray-900 mb-2">
+                Shipping Updates
+              </h4>
+              <p className="text-gray-600 text-sm">
+                You'll receive real-time tracking information via email and SMS
+              </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Star className="w-6 h-6 text-white" />
               </div>
               <h4 className="font-medium text-gray-900 mb-2">Rate & Review</h4>
-              <p className="text-gray-600 text-sm">Share your experience to help other customers make informed decisions</p>
+              <p className="text-gray-600 text-sm">
+                Share your experience to help other customers make informed
+                decisions
+              </p>
             </div>
           </div>
         </div>
 
         {/* Support */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Need help with your order? Contact our customer support at <a href="mailto:support@shophub.com" className="text-blue-600 hover:underline">support@shophub.com</a> or call <a href="tel:+15551234567" className="text-blue-600 hover:underline">+1 (555) 123-4567</a></p>
+          <p>
+            Need help with your order? Contact our customer support at{" "}
+            <a
+              href="mailto:support@shophub.com"
+              className="text-blue-600 hover:underline"
+            >
+              support@shophub.com
+            </a>{" "}
+            or call{" "}
+            <a
+              href="tel:+15551234567"
+              className="text-blue-600 hover:underline"
+            >
+              +1 (555) 123-4567
+            </a>
+          </p>
         </div>
       </div>
     </div>

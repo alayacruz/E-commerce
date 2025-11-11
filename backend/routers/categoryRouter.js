@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import express from "express";
+import prisma from "./db.js";
 
-const prisma = new PrismaClient();
 const categoryRouter = express.Router();
 
 // CREATE

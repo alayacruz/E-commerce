@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import express from "express";
+import prisma from "./db.js";
 
 //import { createClient } from "redis";
 
@@ -21,7 +22,6 @@ dotenv.config();
 // const result = await redisClient.get("foo");
 // console.log(result); // >>> bar
 
-const prisma = new PrismaClient();
 const cartRouter = express.Router();
 
 cartRouter.get("/", async (req, res) => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Truck, CreditCard } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
-import {clearCart} from '../contexts/CartContext';
+// import {clearCart} from '../contexts/CartContext';
 
 // Helper function to get shipping info from localStorage
 const getInitialShippingInfo = () => {
@@ -66,19 +66,28 @@ const Checkout: React.FC = () => {
 
       // 2. Safely get the buyerId
       let buyerId: string | undefined;
+      let userType: string | undefined;
       try {
         const parsedUser = JSON.parse(storedUser);
-        buyerId = parsedUser.userId; // Get the ID
+        buyerId = parsedUser.userId; 
+        userType = parsedUser.userType;
       } catch (e) {
         console.error('Failed to parse user from localStorage', e);
       }
 
-      // 3. --- THIS IS THE NEW, CRITICAL CHECK ---
-      if (!buyerId) {
-        alert("Your user session is invalid. Please log out and log back in.");
+      if (userType === 'seller') {
+        alert("Seller accounts cannot place orders. Please log in as a Buyer.");
         setIsLoading(false);
         return;
       }
+
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (!buyerId || !uuidRegex.test(buyerId) || userType !== 'buyer') {
+        alert("Your user session is invalid or expired. Please log out and log back in as a Buyer.");
+        setIsLoading(false);
+        return;
+      }
+      // --- END OF NEW CHECK ---
 
       // 4. Define URLs for PayPal
       const returnUrl = `${window.location.origin}/order-confirmed`;
@@ -86,7 +95,7 @@ const Checkout: React.FC = () => {
 
       // 5. Create the order payload
       const orderPayload = {
-        buyerId: buyerId, // This is now guaranteed to be a string
+        buyerId: buyerId, 
         paymentMethod: paymentMethod === 'cod' ? 'CoD' : 'PayPal',
         amount: finalTotal,
         shippingInfo: shippingInfo,
@@ -95,7 +104,7 @@ const Checkout: React.FC = () => {
       };
 
       // 6. Call the backend
-      const response = await fetch('http://localhost:3000/order/createFromCart', {
+      const response = await fetch('http://localhost:3000/orders/createFromCart', { // Corrected to /orders
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload),
@@ -110,8 +119,8 @@ const Checkout: React.FC = () => {
       // 7. Handle success
       if (response.status === 201) { // CoD
         console.log("CoD Order placed:", newOrderData.order);
-        clearCart(); 
-        navigate('/order-confirmed', { 
+        clearCart();
+        navigate('/order-confirmed', {
           state: {
             order: newOrderData.order,
             items: cartItems,
@@ -121,7 +130,7 @@ const Checkout: React.FC = () => {
       
       } else if (response.status === 202) { // PayPal
         console.log("PayPal order created, redirecting...");
-        clearCart(); 
+        clearCart();
         window.location.href = newOrderData.approval_url;
       }
 

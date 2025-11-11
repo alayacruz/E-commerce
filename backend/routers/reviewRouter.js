@@ -1,9 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import express from "express";
+import prisma from "./db.js";
 
 dotenv.config();
-const prisma = new PrismaClient();
 const reviewRouter = express.Router();
 
 // Create a review

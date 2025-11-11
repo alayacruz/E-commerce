@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { User, Package, MapPin, Settings, CreditCard as Edit3, Save, X, Calendar, ArrowLeft, Plus } from 'lucide-react';
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import UserOrders from "./UserOrders";
 
 // Interface for the new address form
 type NewAddressForm = {
@@ -40,7 +41,7 @@ const AddNewAddress: React.FC<AddNewAddressProps> = ({ onSave, onCancel }) => {
     e.preventDefault();
     onSave(newAddresses);
   };
- return (
+  return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -153,17 +154,15 @@ const AddNewAddress: React.FC<AddNewAddressProps> = ({ onSave, onCancel }) => {
     </div>
   );
 };
-// --- END of MOCK AddNewAddress component ---
-
 
 type StoredUser = {
-  userId: string; // <-- Fixed: Added userId
+  userId: string; 
   username: string;
   email: string;
   phoneNumbers: string[];
   addresses: StoredAddress[];
-  dateJoined: string; 
-  createdAt: string; 
+  dateJoined: string;
+  createdAt: string;
 };
 
 type StoredAddress = {
@@ -173,7 +172,7 @@ type StoredAddress = {
   state: string;
   pin: string;
   country: string;
-  user_id?: string; 
+  user_id?: string;
 };
 
 type ComponentAddress = {
@@ -188,9 +187,10 @@ type ComponentAddress = {
 };
 
 const UserProfile: React.FC = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
-   const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
 
   const [userInfo, setUserInfo] = useState({
     name: "",
@@ -207,14 +207,14 @@ const UserProfile: React.FC = () => {
         const parsedUser: StoredUser = JSON.parse(storedUserString);
 
         setUserInfo((prevInfo) => ({
-          ...prevInfo, 
-          name: parsedUser.username || "", 
-          email: parsedUser.email || "", 
+          ...prevInfo,
+          name: parsedUser.username || "",
+          email: parsedUser.email || "",
           phone:
             (parsedUser.phoneNumbers && parsedUser.phoneNumbers.length > 0
               ? parsedUser.phoneNumbers[0]
               : ""),
-          dateJoined: parsedUser.dateJoined || "",
+          dateJoined: parsedUser.createdAt || parsedUser.dateJoined || "", // Get createdAt from your new authRouter
         }));
 
         if (parsedUser.addresses && parsedUser.addresses.length > 0) {
@@ -222,7 +222,7 @@ const UserProfile: React.FC = () => {
             (addr, index) => ({
               id: addr.address_id,
               type: "Home",
-              name: parsedUser.username || "User", 
+              name: parsedUser.username || "User",
               address: addr.street,
               city: addr.city,
               zipCode: addr.pin,
@@ -241,47 +241,20 @@ const UserProfile: React.FC = () => {
     } else {
       console.warn("No user found in localStorage.");
     }
-  }, []);
-
-  const orders = [
-    {
-      id: "SH12345678",
-      date: "2024-01-20",
-      status: "Delivered",
-      total: 299.99,
-      items: 3,
-      image:
-        "https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=100",
-    },
-    {
-      id: "SH12345679",
-      date: "2024-01-15",
-      status: "In Transit",
-      total: 159.99,
-      items: 2,
-      image:
-        "https://images.pexels.com/photos/393047/pexels-photo-393047.jpeg?auto=compress&cs=tinysrgb&w=100",
-    },
-    {
-      id: "SH12345680",
-      date: "2024-01-10",
-      status: "Processing",
-      total: 89.99,
-      items: 1,
-      image:
-        "https://images.pexels.com/photos/4050314/pexels-photo-4050314.jpeg?auto=compress&cs=tinysrgb&w=100",
-    },
-  ];
+    if (location.state?.defaultTab) {
+      setActiveTab(location.state.defaultTab);
+    }
+  }, [location.state]);
 
   const handleSaveProfile = async () => {
     setIsEditing(false);
-    
+
     const updatedUserInfo = {
       username: userInfo.name,
       email: userInfo.email,
       phoneNumbers: [userInfo.phone],
     };
-    
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -289,7 +262,7 @@ const UserProfile: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:3000/auth/profile', { 
+      const response = await fetch('http://localhost:3000/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -302,12 +275,9 @@ const UserProfile: React.FC = () => {
         throw new Error('Failed to update profile on the server.');
       }
 
-      const savedUser = await response.json(); 
-      
-      // Update localStorage with the server-confirmed data
+      const savedUser = await response.json();
       localStorage.setItem("user", JSON.stringify(savedUser));
-      
-      // Update the state with the new 'dateJoined' (in case it was missing)
+
       setUserInfo(prev => ({
         ...prev,
         name: savedUser.username,
@@ -336,8 +306,55 @@ const UserProfile: React.FC = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    // 1. Get user and token from localStorage
+    const storedUserString = localStorage.getItem("user");
+    const token = localStorage.getItem("authToken");
+    let userId;
+
+    if (storedUserString) {
+      try {
+        const parsedUser: StoredUser = JSON.parse(storedUserString);
+        userId = parsedUser.userId;
+      } catch (e) {
+        console.error("Failed to parse user from localStorage", e);
+        return;
+      }
+    }
+    console.log("HIWEGHDBSAJVDIQHVEF EGYHVFBH", userId, token);
+    if (!userId || !token) {
+      console.error("No user ID or token found. Cannot delete account.");
+      return;
+    }
+
+    // 2. Make the real fetch call
+    try {
+      const response = await fetch(`http://localhost:3000/auth/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      const result = await response.json();
+      console.log(result.message); // "user was successfully deleted."
+
+      // 3. Log the user out
+      handleLogout();
+
+    } catch (e) {
+      console.error("Error deleting account:", e);
+    }
+  };
+
   const handleSaveNewAddresses = async (addressesToSave: NewAddressForm[]) => {
-    
+
     // 1. Get userId from localStorage
     const storedUserString = localStorage.getItem("user");
     let userId;
@@ -372,12 +389,12 @@ const UserProfile: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log(result.message); 
+      console.log(result.message);
 
       // 3. Optimistic update for UI
       const mappedNewAddresses: ComponentAddress[] = addressesToSave.map((addr, index) => ({
         id: Date.now() + index, // Use a temporary fake ID
-        type: "Home", 
+        type: "Home",
         name: userInfo.name,
         address: addr.street,
         city: addr.city,
@@ -388,7 +405,7 @@ const UserProfile: React.FC = () => {
 
       // 4. Update local state
       setAddresses(prev => [...prev, ...mappedNewAddresses]);
-      
+
       // 5. Update localStorage (optimistically)
       if (storedUserString) {
         try {
@@ -405,8 +422,8 @@ const UserProfile: React.FC = () => {
       }
 
       // 6. Return to profile
-      setActiveTab("addresses"); 
-      setIsAddingAddress(false); 
+      setActiveTab("addresses");
+      setIsAddingAddress(false);
 
     } catch (e) {
       console.error("Error saving new addresses:", e);
@@ -447,7 +464,7 @@ const UserProfile: React.FC = () => {
 
   if (isAddingAddress) {
     return (
-      <AddNewAddress 
+      <AddNewAddress
         onSave={handleSaveNewAddresses}
         onCancel={() => {
           setIsAddingAddress(false);
@@ -492,11 +509,10 @@ const UserProfile: React.FC = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors ${
-                        activeTab === tab.id
-                          ? "bg-blue-50 text-blue-600 border border-blue-200"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors ${activeTab === tab.id
+                        ? "bg-blue-50 text-blue-600 border border-blue-200"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       <Icon className="w-5 h-5 mr-3" />
                       {tab.label}
@@ -615,53 +631,8 @@ const UserProfile: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-900 mb-6">
                   Order History
                 </h2>
-                <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                        <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-                          <img
-                            src={order.image}
-                            alt="Order item"
-                            className="w-16 h-16 object-cover rounded-lg"
-                          />
-                          <div>
-                            <h3 className="font-semibold text-gray-900">
-                              Order #{order.id}
-                            </h3>
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                              <span className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                {new Date(order.date).toLocaleDateString()}
-                              </span>
-                              <span>{order.items} items</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <p className="font-semibold text-gray-900">
-                              ${order.total}
-                            </p>
-                            <span
-                              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                order.status
-                              )}`}
-                            >
-                              {order.status}
-                            </span>
-                          </div>
-                          <button className="flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Link to={`/products/${order.id}`}>View</Link>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <UserOrders />
+                
               </div>
             )}
 
@@ -673,8 +644,8 @@ const UserProfile: React.FC = () => {
                     Saved Addresses
                   </h2>
                   <button
-                   onClick={() => setIsAddingAddress(true)}
-                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    onClick={() => setIsAddingAddress(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     Add New Address
                   </button>
                 </div>
@@ -787,10 +758,9 @@ const UserProfile: React.FC = () => {
                       Account Actions
                     </h3>
                     <div className="space-y-3 sm:space-y-0 sm:space-x-3 flex flex-wrap">
-                      <button className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Change Password
-                      </button>
-                      <button className="w-full sm:w-auto px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors ml-0 sm:ml-3">
+
+                      <button onClick={handleDeleteAccount}
+                        className="w-full sm:w-auto px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors ml-0 sm:ml-3">
                         Delete Account
                       </button>
                       <button onClick={handleLogout} className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">

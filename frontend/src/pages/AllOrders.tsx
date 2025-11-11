@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Package, Clock, Truck, XCircle, MoreVertical, User, MapPin, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react'; // ✅ Need to import useEffect
+import { Package, Clock, Truck, XCircle, MoreVertical, User, MapPin, ArrowLeft, CheckCircle } from 'lucide-react';
 import Footer_seller from '../components/Footer_seller';
 import BottomNav from '../components/BottomNav';
 import Header_seller from '../components/Header_seller';
@@ -8,98 +8,140 @@ interface AllOrdersProps {
   onNavigate: (page: string) => void;
 }
 
-type OrderStatus = 'all' | 'pending' | 'shipped' | 'cancelled';
+type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'cancelled' | 'delivered';
 
-const statusConfig = {
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  shipped: { label: 'Shipped', color: 'bg-blue-100 text-blue-800', icon: Truck },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: Package },
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  PENDING: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  PROCESSING: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Clock },
+  SHIPPED: { label: 'Shipped', color: 'bg-blue-100 text-blue-800', icon: Truck },
+  DELIVERED: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
-const dummyOrders = [
-  {
-    id: 'ORD-12345',
-    product: 'Wireless Headphones',
-    price: 89.99,
-    status: 'pending' as const,
-    buyer: 'John Smith',
-    buyerEmail: 'john@example.com',
-    address: '123 Main St, New York, NY 10001',
-    time: '2 hours ago',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop',
-  },
-  {
-    id: 'ORD-12346',
-    product: 'Smart Watch Pro',
-    price: 299.99,
-    status: 'shipped' as const,
-    buyer: 'Emma Wilson',
-    buyerEmail: 'emma@example.com',
-    address: '456 Oak Ave, Los Angeles, CA 90001',
-    time: '5 hours ago',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop',
-  },
-  {
-    id: 'ORD-12347',
-    product: 'Laptop Stand',
-    price: 49.99,
-    status: 'delivered' as const,
-    buyer: 'Michael Brown',
-    buyerEmail: 'michael@example.com',
-    address: '789 Pine Rd, Chicago, IL 60601',
-    time: '1 day ago',
-    image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=200&h=200&fit=crop',
-  },
-  {
-    id: 'ORD-12348',
-    product: 'Mechanical Keyboard',
-    price: 149.99,
-    status: 'cancelled' as const,
-    buyer: 'Sarah Davis',
-    buyerEmail: 'sarah@example.com',
-    address: '321 Elm St, Houston, TX 77001',
-    time: '2 days ago',
-    image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=200&h=200&fit=crop',
-  },
-  {
-    id: 'ORD-12349',
-    product: 'Wireless Mouse',
-    price: 29.99,
-    status: 'pending' as const,
-    buyer: 'David Martinez',
-    buyerEmail: 'david@example.com',
-    address: '654 Maple Dr, Phoenix, AZ 85001',
-    time: '3 hours ago',
-    image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=200&h=200&fit=crop',
-  },
-  {
-    id: 'ORD-12350',
-    product: 'USB-C Hub',
-    price: 79.99,
-    status: 'shipped' as const,
-    buyer: 'Lisa Anderson',
-    buyerEmail: 'lisa@example.com',
-    address: '987 Cedar Ln, Seattle, WA 98101',
-    time: '6 hours ago',
-    image: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=200&h=200&fit=crop',
-  },
-];
-
 export default function AllOrders({ onNavigate }: AllOrdersProps) {
-  const [activeFilter, setActiveFilter] = useState<OrderStatus>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [orders, setOrders] = useState<any[]>([]); // State for real orders
+  const [loading, setLoading] = useState(true);
+  const [sellerId, setSellerId] = useState<string | null>(null);
 
+  // ✅ Fetch orders when the component mounts
+  useEffect(() => {
+    const fetchSellerOrders = async () => {
+      const userString = localStorage.getItem("user");
+      if (!userString) {
+        setLoading(false);
+        return;
+      }
+
+      const user = JSON.parse(userString);
+      const currentSellerId = user.userId;
+      if (!currentSellerId) {
+        setLoading(false);
+        return;
+      }
+      
+      setSellerId(currentSellerId); // Save sellerId for later
+
+      try {
+        setLoading(true);
+        const response = await fetch(`http://localhost:3000/orders/bySeller?sellerId=${currentSellerId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch orders');
+        }
+        const data = await response.json();
+        setOrders(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSellerOrders();
+  }, []);
+
+  // ✅ Helper function to update order status locally
+  const updateLocalOrderStatus = (orderId: string, newStatus: string) => {
+    setOrders(currentOrders =>
+      currentOrders.map(order =>
+        order.order_id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+  };
+
+  // ✅ Function to handle "Confirm Order"
+  const handleConfirmOrder = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to confirm this order? This will notify the buyer.")) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/orders/${orderId}/confirm`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to confirm order');
+      }
+      // Update state locally
+      updateLocalOrderStatus(orderId, 'PROCESSING');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to confirm order.');
+    }
+    setOpenMenu(null);
+  };
+
+  // ✅ Function to handle "Ship Order"
+  const handleShipOrder = async (orderId: string) => {
+    const carrier = prompt("Please enter the shipping carrier (e.g., FedEx, UPS):");
+    if (!carrier) return;
+    const trackingNumber = prompt("Please enter the tracking number:");
+    if (!trackingNumber) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/orders/${orderId}/ship`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carrier, trackingNumber, sellerId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to ship order');
+      }
+      // Update state locally
+      updateLocalOrderStatus(orderId, 'SHIPPED');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to ship order.');
+    }
+    setOpenMenu(null);
+  };
+
+  
+  // ✅ FIX: Use 'orders' state and uppercase statuses
   const filterTabs = [
-    { id: 'all' as const, label: 'All Orders', count: dummyOrders.length },
-    { id: 'pending' as const, label: 'Pending', count: dummyOrders.filter(o => o.status === 'pending').length },
-    { id: 'shipped' as const, label: 'Shipped', count: dummyOrders.filter(o => o.status === 'shipped').length },
-    { id: 'cancelled' as const, label: 'Cancelled', count: dummyOrders.filter(o => o.status === 'cancelled').length },
+    { id: 'all', label: 'All Orders', count: orders.length },
+    { id: 'PENDING', label: 'Pending', count: orders.filter(o => o.status === 'PENDING').length },
+    { id: 'PROCESSING', label: 'Processing', count: orders.filter(o => o.status === 'PROCESSING').length },
+    { id: 'SHIPPED', label: 'Shipped', count: orders.filter(o => o.status === 'SHIPPED').length },
+    { id: 'CANCELLED', label: 'Cancelled', count: orders.filter(o => o.status === 'CANCELLED').length },
   ];
 
+  // ✅ FIX: Use 'orders' state, not dummyOrders
   const filteredOrders = activeFilter === 'all'
-    ? dummyOrders
-    : dummyOrders.filter(order => order.status === activeFilter);
+    ? orders
+    : orders.filter(order => order.status === activeFilter);
+
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header_seller onNavigate={onNavigate} />
+        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+          <p className="text-center text-gray-600">Loading orders...</p>
+        </main>
+        <Footer_seller />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -146,17 +188,21 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
 
         <div className="space-y-4">
           {filteredOrders.map((order) => {
-            const StatusIcon = statusConfig[order.status].icon;
+            // Your backend filters items, so we can safely show the first
+            const firstItem = order.items[0]; 
+            const config = statusConfig[order.status] || { label: order.status, icon: Package, color: 'bg-gray-100' };
+            const StatusIcon = config.icon;
+
             return (
               <div
-                key={order.id}
+                key={order.order_id}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     <img
-                      src={order.image}
-                      alt={order.product}
+                      src={firstItem.product.imageUrls[0]}
+                      alt={firstItem.product.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -164,26 +210,43 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-gray-900 text-lg">{order.product}</h3>
-                        <p className="text-sm text-gray-600 mt-1">Order ID: {order.id}</p>
+                        <h3 className="font-semibold text-gray-900 text-lg">
+                          {firstItem.product.name}
+                          {order.items.length > 1 && ` (+ ${order.items.length - 1} more)`}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">Order ID: {order.order_id.substring(0, 8)}...</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-gray-900">${order.price}</span>
+                        <span className="text-xl font-bold text-gray-900">${parseFloat(order.amount).toFixed(2)}</span>
                         <div className="relative">
                           <button
-                            onClick={() => setOpenMenu(openMenu === order.id ? null : order.id)}
+                            onClick={() => setOpenMenu(openMenu === order.order_id ? null : order.order_id)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           >
                             <MoreVertical className="w-5 h-5 text-gray-600" />
                           </button>
-                          {openMenu === order.id && (
+                          {openMenu === order.order_id && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                               <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">
                                 View Details
                               </button>
-                              <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">
-                                Update Status
-                              </button>
+                              
+                              {/* ✅ Add OnClick Handlers */}
+                              {order.status === 'PENDING' && (
+                                <button 
+                                  onClick={() => handleConfirmOrder(order.order_id)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-green-600 font-medium">
+                                  Confirm Order
+                                </button>
+                              )}
+                              {order.status === 'PROCESSING' && (
+                                <button 
+                                  onClick={() => handleShipOrder(order.order_id)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 font-medium">
+                                  Ship Order
+                                </button>
+                              )}
+                              
                               <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">
                                 Contact Buyer
                               </button>
@@ -197,25 +260,29 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                     </div>
 
                     <div className="flex items-center gap-2 mb-3">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${statusConfig[order.status].color}`}>
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
                         <StatusIcon className="w-4 h-4" />
-                        {statusConfig[order.status].label}
+                        {config.label}
                       </span>
-                      <span className="text-sm text-gray-500">{order.time}</span>
+                      <span className="text-sm text-gray-500">{new Date(order.order_date).toLocaleString()}</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                       <div className="flex items-start gap-2">
                         <User className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{order.buyer}</p>
-                          <p className="text-sm text-gray-600">{order.buyerEmail}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {order.buyer.user.first_name} {order.buyer.user.last_name}
+                          </p>
+                          <p className="text-sm text-gray-600">{order.buyer.user.email_id}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
                         <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-600">{order.address}</p>
+                          {/* Note: Address info is not in the /bySeller route. 
+                              You would need to add it to the backend query if needed. */}
+                          <p className="text-sm text-gray-600">Shipping info not loaded</p>
                         </div>
                       </div>
                     </div>
