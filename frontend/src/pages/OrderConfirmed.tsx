@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CheckCircle,
@@ -11,6 +11,92 @@ import {
   Share2,
   Star,
 } from "lucide-react";
+
+
+const generateInvoiceHTML = (details: any) => {
+  const itemsHTML = details.items.map((item: any) => `
+    <tr class="item">
+      <td>${item.product.name} (x${item.quantity})</td>
+      <td>$${(item.product.price * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <html>
+      <head>
+        <title>Invoice - Order #${details.orderNumber}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; line-height: 1.6; padding: 20px; }
+          .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); font-size: 16px; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; color: #333; }
+          .details { margin-bottom: 30px; }
+          .details, .shipping { line-height: 1.4; }
+          .details table, .shipping table { width: 100%; }
+          .details td:last-child, .shipping td:last-child { text-align: right; }
+          .shipping { margin-bottom: 30px; }
+          .items-table { width: 100%; border-collapse: collapse; }
+          .items-table .heading td { background: #eee; border-bottom: 1px solid #ddd; font-weight: bold; }
+          .items-table .item td { border-bottom: 1px solid #eee; }
+          .items-table .total td { border-top: 2px solid #aaa; font-weight: bold; }
+          .items-table tr td:last-child { text-align: right; }
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .invoice-box { box-shadow: none; border: 0; padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-box">
+          <div class="header">
+            <h1>Invoice</h1>
+            <p>ShopHub - Order Confirmation</p>
+          </div>
+          
+          <table class="details" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>Order Number:</td>
+              <td>#${details.orderNumber}</td>
+            </tr>
+            <tr>
+              <td>Order Date:</td>
+              <td>${new Date(details.orderDate).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+              <td>Payment Method:</td>
+              <td>${details.paymentMethod}</td>
+            </tr>
+          </table>
+
+          <div class="shipping">
+            <strong>Ship To:</strong><br>
+            ${details.shippingAddress.name}<br>
+            ${details.shippingAddress.address}<br>
+            ${details.shippingAddress.city}, ${details.shippingAddress.zipCode}<br>
+            ${details.shippingAddress.phone}
+          </div>
+
+          <table class="items-table" cellpadding="0" cellspacing="0">
+            <tr class="heading">
+              <td>Item</td>
+              <td>Price</td>
+            </tr>
+            ${itemsHTML}
+            <tr class="total">
+              <td></td>
+              <td><strong>Total: $${details.total.toFixed(2)}</strong></td>
+            </tr>
+          </table>
+          <p style="text-align: center; margin-top: 30px;" class="no-print">
+            This is a computer-generated invoice. Click Print or (Ctrl+P) to save as PDF.
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
 
 const getTrackingSteps = (status: string) => {
   const steps = [
@@ -65,7 +151,9 @@ const getTrackingSteps = (status: string) => {
 
 const OrderConfirmed: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate(); 
   const { order, items, shippingInfo } = location.state || {};
+  
   const [orderDetails] = useState({
     orderNumber: order?.order_id || "N/A",
     orderDate: order?.order_date || new Date().toISOString(),
@@ -93,8 +181,15 @@ const OrderConfirmed: React.FC = () => {
   };
 
   const handleDownloadInvoice = () => {
-    alert("Invoice download functionality is not implemented yet.");
-    // yet to be done 
+    const invoiceHTML = generateInvoiceHTML(orderDetails);
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(invoiceHTML);
+      newWindow.document.close(); 
+      newWindow.print();
+    } else {
+      alert("Please allow popups for this site to download the invoice.");
+    }
   };
 
   return (
@@ -222,7 +317,10 @@ const OrderConfirmed: React.FC = () => {
                     {orderDetails.paymentMethod}
                   </p>
                   <p className="text-gray-600 text-sm">
-                    Payment will be collected upon delivery
+                    {orderDetails.paymentMethod === "Cash on Delivery"
+                      ? "Payment will be collected upon delivery"
+                      : "Paid via PayPal"
+                    }
                   </p>
                 </div>
               </div>
