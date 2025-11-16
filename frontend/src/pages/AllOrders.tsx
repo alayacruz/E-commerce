@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'; // ✅ Need to import useEffect
-import { Package, Clock, Truck, XCircle, MoreVertical, User, MapPin, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Package, Clock, Truck, XCircle, User, MapPin, ArrowLeft, CheckCircle } from 'lucide-react';
 import Footer_seller from '../components/Footer_seller';
 import BottomNav from '../components/BottomNav';
 import Header_seller from '../components/Header_seller';
@@ -20,8 +20,8 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 
 export default function AllOrders({ onNavigate }: AllOrdersProps) {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [orders, setOrders] = useState<any[]>([]); // State for real orders
+  // Removed openMenu state as it is no longer needed
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sellerId, setSellerId] = useState<string | null>(null);
 
@@ -43,7 +43,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
       setSellerId(currentSellerId); 
 
       try {
-        setLoading(true);
         const response = await fetch(`http://localhost:3000/orders/bySeller?sellerId=${currentSellerId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
@@ -77,13 +76,11 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
       if (!response.ok) {
         throw new Error('Failed to confirm order');
       }
-      // Update state locally
       updateLocalOrderStatus(orderId, 'PROCESSING');
     } catch (error) {
       console.error(error);
       alert('Failed to confirm order.');
     }
-    setOpenMenu(null);
   };
 
   const handleShipOrder = async (orderId: string) => {
@@ -102,13 +99,11 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
       if (!response.ok) {
         throw new Error('Failed to ship order');
       }
-      // Update state locally
       updateLocalOrderStatus(orderId, 'SHIPPED');
     } catch (error) {
       console.error(error);
       alert('Failed to ship order.');
     }
-    setOpenMenu(null);
   };
 
   const handleDeliverOrder = async (orderId: string) => {
@@ -121,16 +116,13 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
       if (!response.ok) {
         throw new Error('Failed to update order to delivered');
       }
-      // Update state locally
       updateLocalOrderStatus(orderId, 'DELIVERED');
     } catch (error) {
       console.error(error);
       alert('Failed to update order to delivered.');
     }
-    setOpenMenu(null);
   };
   
-  // ✅ FIX: Use 'orders' state and uppercase statuses
   const filterTabs = [
     { id: 'all', label: 'All Orders', count: orders.length },
     { id: 'PENDING', label: 'Pending', count: orders.filter(o => o.status === 'PENDING').length },
@@ -139,7 +131,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     { id: 'CANCELLED', label: 'Cancelled', count: orders.filter(o => o.status === 'CANCELLED').length },
   ];
 
-  // ✅ FIX: Use 'orders' state, not dummyOrders
   const filteredOrders = activeFilter === 'all'
     ? orders
     : orders.filter(order => order.status === activeFilter);
@@ -202,7 +193,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
 
         <div className="space-y-4">
           {filteredOrders.map((order) => {
-            // Your backend filters items, so we can safely show the first
             const firstItem = order.items[0]; 
             const config = statusConfig[order.status] || { label: order.status, icon: Package, color: 'bg-gray-100' };
             const StatusIcon = config.icon;
@@ -222,7 +212,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between mb-2 gap-4">
                       <div>
                         <h3 className="font-semibold text-gray-900 text-lg">
                           {firstItem.product.name}
@@ -230,53 +220,39 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">Order ID: {order.order_id.substring(0, 8)}...</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-gray-900">${parseFloat(order.amount).toFixed(2)}</span>
-                        <div className="relative">
+                      
+                      <div className="flex items-center gap-3 self-end md:self-auto">
+                        <span className="text-xl font-bold text-gray-900 mr-2">${parseFloat(order.amount).toFixed(2)}</span>
+                        
+                        {/* --- ACTION BUTTONS START --- */}
+                        {order.status === 'PENDING' && (
                           <button
-                            onClick={() => setOpenMenu(openMenu === order.order_id ? null : order.order_id)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            onClick={() => handleConfirmOrder(order.order_id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                           >
-                            <MoreVertical className="w-5 h-5 text-gray-600" />
+                            Confirm Order
                           </button>
-                          {openMenu === order.order_id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                              <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">
-                                View Details
-                              </button>
-                              
-                              {/* ✅ Add OnClick Handlers */}
-                              {order.status === 'PENDING' && (
-                                <button 
-                                  onClick={() => handleConfirmOrder(order.order_id)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-green-600 font-medium">
-                                  Confirm Order
-                                </button>
-                              )}
-                              {order.status === 'PROCESSING' && (
-                                <button 
-                                  onClick={() => handleShipOrder(order.order_id)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 font-medium">
-                                  Ship Order
-                                </button>
-                              )}
-                              {order.status === 'SHIPPED' && (
-                                <button 
-                                  onClick={() => handleDeliverOrder(order.order_id)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 font-medium">
-                                  Delivered
-                                </button>
-                              )}
-                              
-                              <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">
-                                Contact Buyer
-                              </button>
-                              <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-red-600">
-                                Cancel Order
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        )}
+
+                        {order.status === 'PROCESSING' && (
+                          <button
+                            onClick={() => handleShipOrder(order.order_id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                          >
+                            Ship Order
+                          </button>
+                        )}
+
+                        {order.status === 'SHIPPED' && (
+                          <button
+                            onClick={() => handleDeliverOrder(order.order_id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                          >
+                            Mark Delivered
+                          </button>
+                        )}
+                        {/* --- ACTION BUTTONS END --- */}
+
                       </div>
                     </div>
 
@@ -301,8 +277,6 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                       <div className="flex items-start gap-2">
                         <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          {/* Note: Address info is not in the /bySeller route. 
-                              You would need to add it to the backend query if needed. */}
                           <p className="text-sm text-gray-600">Shipping info not loaded</p>
                         </div>
                       </div>
