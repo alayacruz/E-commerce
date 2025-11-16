@@ -79,7 +79,7 @@ sellerRouter.post("/products", upload, async (req, res) => {
         .json({ error: "Authentication token is missing." });
     }
 
-    if (!name || !price || !availableQuantity || !categoryId) {
+    if (!name || !price || !availableQuantity) {
       return res.status(400).json({ error: "Missing required fields." });
     }
     if (name.length > 50)
@@ -118,18 +118,16 @@ sellerRouter.post("/products", upload, async (req, res) => {
     }
 
     // --- FIX 2: VALIDATE PARSED NUMBERS ---
-    if (
-      isNaN(numPrice) ||
-      isNaN(numAvailableQuantity) ||
-      isNaN(numCategoryId)
-    ) {
+    if (isNaN(numPrice) || isNaN(numAvailableQuantity)) {
       return res
         .status(400)
         .json({ error: "Invalid data types for price, stock, or category." });
     }
     // Also validate originalPrice if it was provided
     if (originalPrice && isNaN(numOriginalPrice)) {
-      return res.status(400).json({ error: "Invalid data type for originalPrice." });
+      return res
+        .status(400)
+        .json({ error: "Invalid data type for originalPrice." });
     }
     // --- END OF FIXES ---
 
@@ -153,7 +151,7 @@ sellerRouter.post("/products", upload, async (req, res) => {
         availableQuantity: numAvailableQuantity,
         status,
         seller_id: sellerId,
-        categoryId: numCategoryId,
+        categoryId: numCategoryId ? numCategoryId : null,
         imageUrls: imageUrls,
         features: featuresArray, // Use parsed variable
         specifications: specsObject, // Use parsed variable
@@ -175,7 +173,10 @@ sellerRouter.post("/products", upload, async (req, res) => {
         },
       });
     } catch (elasticError) {
-      console.error("Failed to index new product, but product was created:", elasticError);
+      console.error(
+        "Failed to index new product, but product was created:",
+        elasticError
+      );
     }
 
     res.status(201).json(newProduct);
@@ -434,7 +435,6 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
 
     // Send the success response
     res.json(updatedProduct);
-    
   } catch (e) {
     // This will now only catch critical database errors
     console.error("Failed to update product in database:", e);
