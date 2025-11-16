@@ -1,3 +1,6 @@
+
+
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
@@ -12,10 +15,11 @@ const Header: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      // Navigate to products page with search query - the ProductListings component will handle the API call
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
     }
-  };
+  }
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
