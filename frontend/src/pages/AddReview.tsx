@@ -22,12 +22,12 @@ export function AddReviewPage() {
   const [hoveredRating, setHoveredRating] = useState(0);
 
   const [formData, setFormData] = useState({
-    title: '',
+    // title: '',
     comment: '',
   });
 
   const [errors, setErrors] = useState({
-    title: '',
+    // title: '',
     comment: '',
   });
 
@@ -59,16 +59,16 @@ export function AddReviewPage() {
 
   const validateForm = () => {
     // Simplified validation (removed userName and email)
-    const newErrors = { title: '', comment: '' };
+    const newErrors = { comment: '' };
     let isValid = true;
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'Review title is required';
-      isValid = false;
-    } else if (formData.title.length < 5) {
-      newErrors.title = 'Title must be at least 5 characters';
-      isValid = false;
-    }
+    // if (!formData.title.trim()) {
+    //   newErrors.title = 'Review title is required';
+    //   isValid = false;
+    // } else if (formData.title.length < 5) {
+    //   newErrors.title = 'Title must be at least 5 characters';
+    //   isValid = false;
+    // }
 
     if (!formData.comment.trim()) {
       newErrors.comment = 'Review text is required';
@@ -113,7 +113,7 @@ export function AddReviewPage() {
           productId: productId,
           userId: userId,
           rating: rating,
-          title: formData.title,
+          // title: formData.title,
           comment: formData.comment,
         }),
       });
@@ -225,7 +225,7 @@ export function AddReviewPage() {
                 </p>
               </div>
 
-              <div>
+              {/* <div>
                 <label htmlFor="title" className="block text-sm font-semibold text-gray-900 mb-2">
                   Review Title *
                 </label>
@@ -247,7 +247,7 @@ export function AddReviewPage() {
                   {errors.title && <p className="text-red-600 text-sm">{errors.title}</p>}
                   <p className="text-gray-500 text-sm ml-auto">{formData.title.length}/100</p>
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <label htmlFor="comment" className="block text-sm font-semibold text-gray-900 mb-2">

@@ -276,7 +276,7 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                         </div>
                         <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                       </div>
-                      <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4>
+                      {/* <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4> */}
                       <p className="text-gray-700">{review.comment}</p>
                     </div>
                   );
