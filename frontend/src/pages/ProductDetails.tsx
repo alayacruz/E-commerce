@@ -30,13 +30,13 @@ interface Review {
   comment: string;  
 }
 
-interface SimilarProduct {
-  id: string;
-  name: string;
-  price: number;
-  image: string; 
-  rating: number;
-}
+// interface SimilarProduct {
+//   id: string;
+//   name: string;
+//   price: number;
+//   image: string; 
+//   rating: number;
+// }
 
 const ProductDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +49,7 @@ const ProductDetails: React.FC = () => {
   // --- 1. STATE FOR ALL FETCHED DATA ---
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [similarProducts, setSimilarProducts] = useState<SimilarProduct[]>([]);
+  // const [similarProducts, setSimilarProducts] = useState<SimilarProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,12 +89,12 @@ const ProductDetails: React.FC = () => {
           console.warn("Could not fetch reviews.");
         }
 
-        if (similarRes.ok) {
-          const similarData = await similarRes.json();
-          setSimilarProducts(similarData);
-        } else {
-          console.warn("Could not fetch similar products.");
-        }
+        // if (similarRes.ok) {
+        //   const similarData = await similarRes.json();
+        //   setSimilarProducts(similarData);
+        // } else {
+        //   console.warn("Could not fetch similar products.");
+        // }
         
       } catch (err: any) {
         setError(err.message);
@@ -334,11 +334,14 @@ const handleAddToCart = async () => { // 1. Make the function async
         </div>
 
         {/* Reviews */}
+        <button className="px-6 py-4 text-blue-600 border-b-2 border-blue-600 font-medium">
+                  Customer Reviews
+                </button>
+                <div className="p-6">
         {reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-4">
-                      {/* Use the user's name from the review data */}
                       <span className="font-medium text-gray-900">{review.user.username}</span>
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
@@ -351,19 +354,23 @@ const handleAddToCart = async () => { // 1. Make the function async
                         ))}
                       </div>
                     </div>
+                    
                     {/* Format the 'createdAt' date */}
                     <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                   </div>
                   {/* Display the review title */}
-                  {/* <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4> */}
+                  <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4>
                   <p className="text-gray-700 mb-2">{review.comment}</p>
                   {/* 'Helpful' button is removed as it wasn't in your backend model */}
                 </div>
+                
+                
               ))}
+              </div>
            
 
         {/* Similar Products */}
-        <div className="mt-16">
+        {/* <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {similarProducts.length === 0 && <p className="text-gray-600">No similar products found.</p>}
@@ -395,7 +402,7 @@ const handleAddToCart = async () => { // 1. Make the function async
               </Link>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

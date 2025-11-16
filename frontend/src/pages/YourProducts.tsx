@@ -276,15 +276,16 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* --- ✅ EDIT BUTTON FIXED --- */}
                     <button
-                      onClick={() => alert('Edit product: ' + product.name)}
+                      onClick={() => onNavigate('add-product', product.id)}
                       className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                     >
                       <Edit className="w-4 h-4" />
                       Edit
                     </button>
+                    {/* --- ✅ DELETE BUTTON FIXED --- */}
                     <button
-                      // 11. Wire up real delete here too
                       onClick={() => handleDelete(product.id, product.name)}
                       className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                     >
