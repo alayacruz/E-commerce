@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Upload, X, Save, ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react'; // Import Plus and Trash2
+import { Upload, X, Save, ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react'; 
 import Header_seller from '../components/Header_seller';
 import Footer_seller from '../components/Footer_seller';
 import BottomNav from '../components/BottomNav';
@@ -22,57 +22,101 @@ interface Specification {
 
 export default function AddProduct({ onNavigate, productId }: AddProductProps) {
   const [productName, setProductName] = useState('');
-  const [category, setCategory] = useState('');
   
+  // 3 dropdown for categories 
+  const [mainCategories, setMainCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<Category[]>([]);
+  const [leafCategories, setLeafCategories] = useState<Category[]>([]);
+
+  const [selectedMainCat, setSelectedMainCat] = useState('');
+  const [selectedSubCat, setSelectedSubCat] = useState('');
+  const [selectedLeafCat, setSelectedLeafCat] = useState('');
+
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState(''); 
   const [stock, setStock] = useState('');
   const [description, setDescription] = useState('');
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [features, setFeatures] = useState<string[]>(['']); // Start with one empty feature
-  const [specifications, setSpecifications] = useState<Specification[]>([{ key: '', value: '' }]); // Start with one empty spec pair
+  const [features, setFeatures] = useState<string[]>(['']); 
+  const [specifications, setSpecifications] = useState<Specification[]>([{ key: '', value: '' }]); 
 
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
 
   const { token } = useAuth();
   
-  // --- 4. CREATE PREVIEWS FOR *NEW* IMAGES ---
   const newImagePreviews = useMemo(() => {
     return newImages.map(file => URL.createObjectURL(file));
   }, [newImages]);
 
-  // Effect to clean up object URLs
   useEffect(() => {
     return () => {
       newImagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
   }, [newImagePreviews]);
   
-  // Effect to fetch categories (no change)
+
+  const fetchCategoriesByParent = async (parentId: string | number | null) => {
+    try {
+      const query = parentId === null ? 'null' : parentId;
+      const response = await fetch(`http://localhost:3000/category?parentId=${query}`);
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return await response.json();
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  };
+
+  
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/category');
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
-        setCategories(data);
-      } catch (err) {
-        console.error(err);
-        alert('Could not load categories. Please try again later.');
-      }
+    const loadMainCategories = async () => {
+      const data = await fetchCategoriesByParent(null);
+      setMainCategories(data);
     };
+    loadMainCategories();
+  }, []);
+
+  // --- Handlers for Dropdown Changes ---
+  const handleMainCatChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedMainCat(val);
+    setSelectedSubCat('');
+    setSelectedLeafCat('');
+    setSubCategories([]);
+    setLeafCategories([]);
+
+    if (val) {
+      const subs = await fetchCategoriesByParent(val);
+      setSubCategories(subs);
+    }
+  };
+
+  const handleSubCatChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedSubCat(val);
+    setSelectedLeafCat('');
+    setLeafCategories([]);
+
+    if (val) {
+      const leafs = await fetchCategoriesByParent(val);
+      setLeafCategories(leafs);
+    }
+  };
+
+  const handleLeafCatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedLeafCat(e.target.value);
+  };
+
+  // --- Load Product Data for Editing ---
+  useEffect(() => {
     const fetchProductData = async () => {
       if (productId && token) {
         setIsLoading(true);
         try {
-          // You MUST create this route on your backend
           const res = await fetch(`http://localhost:3000/seller/products/${productId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -80,9 +124,8 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
           
           const data = await res.json();
           
-          // Pre-fill all form fields
+          // Fill basic fields
           setProductName(data.name);
-          setCategory(data.categoryId);
           setPrice(String(data.price));
           setOriginalPrice(String(data.originalPrice || ''));
           setStock(String(data.availableQuantity));
@@ -96,6 +139,53 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
             setSpecifications([{ key: '', value: '' }]);
           }
 
+          // --- Logic to Pre-fill Categories ---
+          // The backend returns the full hierarchy in `data.category`
+          // Hierarchy could be: Leaf -> Sub -> Main
+          // Or: Sub -> Main (if only 2 levels)
+          // Or: Main (if 1 level)
+          
+          const cat = data.category;
+          if (cat) {
+            // Case 1: 3 Levels deep (Main -> Sub -> Leaf)
+            if (cat.parentCategory && cat.parentCategory.parentCategory) {
+              const mainId = cat.parentCategory.parentCategory.categoryId;
+              const subId = cat.parentCategory.categoryId;
+              const leafId = cat.categoryId;
+
+              setSelectedMainCat(String(mainId));
+              const subs = await fetchCategoriesByParent(mainId);
+              setSubCategories(subs);
+
+              setSelectedSubCat(String(subId));
+              const leafs = await fetchCategoriesByParent(subId);
+              setLeafCategories(leafs);
+              
+              setSelectedLeafCat(String(leafId));
+            } 
+            // Case 2: 2 Levels deep (Main -> Sub)
+            else if (cat.parentCategory) {
+              const mainId = cat.parentCategory.categoryId;
+              const subId = cat.categoryId;
+
+              setSelectedMainCat(String(mainId));
+              const subs = await fetchCategoriesByParent(mainId);
+              setSubCategories(subs);
+
+              setSelectedSubCat(String(subId));
+              // Fetch potential children of this sub (to populate the 3rd dropdown if needed)
+              const leafs = await fetchCategoriesByParent(subId);
+              setLeafCategories(leafs);
+            }
+            // Case 3: 1 Level deep (Main only)
+            else {
+              const mainId = cat.categoryId;
+              setSelectedMainCat(String(mainId));
+              const subs = await fetchCategoriesByParent(mainId);
+              setSubCategories(subs);
+            }
+          }
+
         } catch (err) {
           console.error(err);
           alert('Failed to load product data. Returning to products list.');
@@ -105,11 +195,11 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
         }
       }
     };
-    fetchCategories();
- fetchProductData();
+    
+    fetchProductData();
   }, [productId, token, onNavigate]);
 
-  // Image upload handlers (no change)
+  // ... (Image handlers remain the same)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -126,7 +216,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
     setNewImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // --- NEW: Handlers for Features ---
+  // ... (Feature/Spec handlers remain the same)
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...features];
     newFeatures[index] = value;
@@ -142,7 +232,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
     setFeatures(newFeatures);
   };
 
-  // --- NEW: Handlers for Specifications ---
   const handleSpecChange = (index: number, field: 'key' | 'value', value: string) => {
     const newSpecs = [...specifications];
     newSpecs[index][field] = value;
@@ -159,11 +248,12 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
   };
 
 
-  // --- UPDATED: handleSave to include new fields ---
   const handleSave = async () => {
-    // Basic validation
-    if (!productName || !category || !price || !stock) {
-      alert('Please fill in all required fields');
+    // Determine final category ID (use the most specific one selected)
+    const finalCategoryId = selectedLeafCat || selectedSubCat || selectedMainCat;
+
+    if (!productName || !finalCategoryId || !price || !stock) {
+      alert('Please fill in all required fields (Name, Category, Price, Stock)');
       return;
     }
 
@@ -188,24 +278,20 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
     formData.append('description', description);
     formData.append('price', price);
     formData.append('availableQuantity', stock);
-    formData.append('categoryId', category); // 'category' state holds the ID
+    formData.append('categoryId', finalCategoryId); 
 
-    // Add originalPrice if it exists
     if (originalPrice) {
       formData.append('originalPrice', originalPrice);
     }
 
-    // Add features (filter out empty strings)
     features.forEach(f => { if (f.trim()) formData.append('features', f.trim()); });
 
-    // Convert specs array to a JSON object and stringify it
     const specsObject = specifications.reduce((acc, spec) => {
       if (spec.key.trim() && spec.value.trim()) acc[spec.key.trim()] = spec.value.trim();
       return acc;
     }, {} as Record<string, string>);
     formData.append('specifications', JSON.stringify(specsObject));
 
-    // Add images
     newImages.forEach((imageFile) => {
       formData.append('images', imageFile);
     });
@@ -219,8 +305,8 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
     try {
       const isEditing = !!productId;
       const url = isEditing
-        ? `http://localhost:3000/seller/products/${productId}` // PUT route
-        : 'http://localhost:3000/seller/products';         // POST route
+        ? `http://localhost:3000/seller/products/${productId}`
+        : 'http://localhost:3000/seller/products';        
       
       const method = isEditing ? 'PUT' : 'POST';
 
@@ -248,7 +334,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
     }
   };
 
-  // --- 8. ADD LOADING OVERLAY ---
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -263,7 +348,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
       <Header_seller onNavigate={onNavigate} showSearch={false} />
 
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 w-full">
-        {/* ... (Back to Products button) ... */}
         <button
           onClick={() => onNavigate('products')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
@@ -272,7 +356,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
           Back to Products
         </button>
 
-        {/* ... (Header text) ... */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900">
             {productId ? 'Edit Product' : 'Add Product'}
@@ -282,7 +365,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
           <form className="space-y-6">
-            {/* ... Product Name input... */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
                 Product Name <span className="text-red-600">*</span>
@@ -297,28 +379,70 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Category Dropdown */}
+            {/* --- 3-Level Category Dropdowns --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Main Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Category <span className="text-red-600">*</span>
+                  Main Category <span className="text-red-600">*</span>
                 </label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={selectedMainCat}
+                  onChange={handleMainCatChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
-                  disabled={categories.length === 0 || isSubmitting}
+                  disabled={isSubmitting}
                 >
-                  <option value="">Select a category</option>
-                  {categories.map((cat) => (
+                  <option value="">Select Main Category</option>
+                  {mainCategories.map((cat) => (
                     <option key={cat.categoryId} value={cat.categoryId}>
                       {cat.categoryName}
                     </option>
                   ))}
                 </select>
               </div>
-            
-              {/* ... Price input ... */}
+
+              {/* Sub Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Category
+                </label>
+                <select
+                  value={selectedSubCat}
+                  onChange={handleSubCatChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                  disabled={!selectedMainCat || subCategories.length === 0 || isSubmitting}
+                >
+                  <option value="">Select Category</option>
+                  {subCategories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.categoryName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Leaf Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Sub Category
+                </label>
+                <select
+                  value={selectedLeafCat}
+                  onChange={handleLeafCatChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                  disabled={!selectedSubCat || leafCategories.length === 0 || isSubmitting}
+                >
+                  <option value="">Select Sub Category</option>
+                  {leafCategories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.categoryName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Price <span className="text-red-600">*</span>
@@ -337,10 +461,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                   />
                 </div>
               </div>
-            </div>
 
-            {/* --- NEW: Original Price and Stock inputs --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Original Price (Optional)
@@ -376,7 +497,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               </div>
             </div>
 
-            {/* --- NEW: Features Section --- */}
+            {/* Features Section */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
                 Features
@@ -388,7 +509,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                       type="text"
                       value={feature}
                       onChange={(e) => handleFeatureChange(index, e.target.value)}
-                      placeholder="e.g., Active Noise Cancellation"
+                      placeholder="Features..."
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={isSubmitting}
                     />
@@ -414,7 +535,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               </div>
             </div>
 
-            {/* --- NEW: Specifications Section --- */}
+            {/* Specifications Section */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
                 Specifications
@@ -426,7 +547,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                       type="text"
                       value={spec.key}
                       onChange={(e) => handleSpecChange(index, 'key', e.target.value)}
-                      placeholder="Specification Name (e.g., Weight)"
+                      placeholder="Specification Name"
                       className="w-full md:w-1/3 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={isSubmitting}
                     />
@@ -434,7 +555,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                       type="text"
                       value={spec.value}
                       onChange={(e) => handleSpecChange(index, 'value', e.target.value)}
-                      placeholder="Value (e.g., 250g)"
+                      placeholder="Value"
                       className="w-full md:flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={isSubmitting}
                     />
@@ -460,7 +581,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               </div>
             </div>
             
-            {/* ... Image Upload section (no change) ... */}
+            {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
                 Product Images
@@ -486,9 +607,7 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                 </label>
               </div>
 
-              {/* Combined Image Preview Gallery */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                {/* Show existing images */}
                 {existingImageUrls.map((image, index) => (
                   <div key={image} className="relative group">
                     <img
@@ -507,7 +626,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                   </div>
                 ))}
                 
-                {/* Show *new* image previews */}
                 {newImagePreviews.map((image, index) => (
                   <div key={image} className="relative group">
                     <img
@@ -528,7 +646,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               </div>
             </div>
 
-            {/* ... (Description input ) ... */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
                 Description
@@ -543,7 +660,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
               />
             </div>
             
-            {/* ... Save Button (no change) ... */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
               <button
                 type="button" 
@@ -559,7 +675,6 @@ export default function AddProduct({ onNavigate, productId }: AddProductProps) {
                 ) : (
                   <>
                     <Save className="w-5 h-5" />
-                    {/* 11. UPDATE BUTTON TEXT */}
                     {productId ? 'Update Product' : 'Save Product'}
                   </>
                 )}

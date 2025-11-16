@@ -20,10 +20,21 @@ categoryRouter.post("/", async (req, res) => {
   }
 });
 
-// READ ALL
+// READ ALL 
 categoryRouter.get("/", async (req, res) => {
   try {
+    const { parentId } = req.query;
+    let whereClause = {};
+
+    // If parentId is "null", fetch root categories
+    if (parentId === "null") {
+      whereClause = { parentCategoryId: null };
+    } else if (parentId) {
+      whereClause = { parentCategoryId: parseInt(parentId) };
+    }
+
     const categories = await prisma.category.findMany({
+      where: whereClause,
       include: { subcategories: true, parentCategory: true },
     });
     res.status(200).json(categories);
@@ -37,8 +48,8 @@ categoryRouter.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const category = await prisma.category.findUnique({
-      where: { categoryId: parseInt(id) }, // Using categoryId as per schema
-      include: { subcategories: true, parentCategory: true, products: true }, // Include products here too
+      where: { categoryId: parseInt(id) },
+      include: { subcategories: true, parentCategory: true, products: true },
     });
     if (!category) return res.status(404).json({ error: "Category not found" });
     res.status(200).json(category);
@@ -58,7 +69,6 @@ categoryRouter.get("/:id/products", async (req, res) => {
         .json({ error: "Invalid category ID provided. ID must be a number." });
     }
 
-    // First, check if the category exists. If it doesn't, we return a 404.
     const category = await prisma.category.findUnique({
       where: { categoryId: categoryId },
     });
@@ -67,19 +77,16 @@ categoryRouter.get("/:id/products", async (req, res) => {
       return res.status(404).json({ error: "Category not found" });
     }
 
-    // Then, fetch the products in that category.
     const products = await prisma.product.findMany({
       where: {
         categoryId: categoryId,
       },
-
       include: {
         seller: { select: { seller_id: true, gst_no: true } },
         reviews: true,
       },
     });
 
-    // Return the list of products (may be an empty array if category exists but has no products)
     res.status(200).json(products);
   } catch (err) {
     console.error("Error fetching products:", err);
@@ -93,7 +100,7 @@ categoryRouter.put("/:id", async (req, res) => {
     const { id } = req.params;
     const { categoryName, parentCategoryId } = req.body;
     const updated = await prisma.category.update({
-      where: { categoryId: parseInt(id) }, // Using categoryId as per schema
+      where: { categoryId: parseInt(id) },
       data: {
         categoryName,
         parentCategoryId: parentCategoryId || null,
@@ -110,7 +117,7 @@ categoryRouter.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await prisma.category.delete({
-      where: { categoryId: parseInt(id) }, // Using categoryId as per schema
+      where: { categoryId: parseInt(id) },
     });
     res.status(200).json({ message: "Category deleted" });
   } catch (err) {

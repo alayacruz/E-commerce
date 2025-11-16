@@ -60,16 +60,15 @@ sellerRouter.use(isSeller);
 // CREATE PRODUCT
 sellerRouter.post("/products", upload, async (req, res) => {
   try {
-    // --- Destructure all fields ---
     const {
       name,
       description,
       price,
       availableQuantity,
       categoryId,
-      originalPrice, // This is a string or undefined
-      features, // This is a string or an array of strings
-      specifications, // This is a JSON string
+      originalPrice,
+      features,
+      specifications,
     } = req.body;
     const sellerId = req.user?.userId;
 
@@ -91,22 +90,18 @@ sellerRouter.post("/products", upload, async (req, res) => {
         .status(403)
         .json({ error: "Description should not be more than 200 characters" });
 
-    // --- FIX 1: PARSE ALL INCOMING DATA ---
     const numPrice = parseFloat(price);
     const numAvailableQuantity = parseInt(availableQuantity, 10);
     const numCategoryId = parseInt(categoryId, 10);
 
-    // Parse originalPrice (and handle if it's not provided)
     const numOriginalPrice = originalPrice ? parseFloat(originalPrice) : null;
 
-    // Handle features (Multer gives a string for one, or array for many)
     const featuresArray = Array.isArray(features)
       ? features
       : features
       ? [features]
       : [];
 
-    // Parse the specifications JSON string
     let specsObject = {};
     try {
       if (specifications) {
@@ -117,19 +112,16 @@ sellerRouter.post("/products", upload, async (req, res) => {
       return res.status(400).json({ error: "Invalid specifications format." });
     }
 
-    // --- FIX 2: VALIDATE PARSED NUMBERS ---
     if (isNaN(numPrice) || isNaN(numAvailableQuantity)) {
       return res
         .status(400)
         .json({ error: "Invalid data types for price, stock, or category." });
     }
-    // Also validate originalPrice if it was provided
     if (originalPrice && isNaN(numOriginalPrice)) {
       return res
         .status(400)
         .json({ error: "Invalid data type for originalPrice." });
     }
-    // --- END OF FIXES ---
 
     const status =
       numAvailableQuantity === 0
@@ -138,27 +130,24 @@ sellerRouter.post("/products", upload, async (req, res) => {
         ? "A Few Left"
         : "In Stock";
 
-    // get urls from cloudinary
     const imageUrls = req.files.map((file) => file.path);
 
-    // --- FIX 3: USE THE CORRECT PARSED VARIABLES ---
     const newProduct = await prisma.product.create({
       data: {
         name,
         description,
         price: numPrice,
-        originalPrice: numOriginalPrice, // Use parsed variable
+        originalPrice: numOriginalPrice,
         availableQuantity: numAvailableQuantity,
         status,
         seller_id: sellerId,
         categoryId: numCategoryId ? numCategoryId : null,
         imageUrls: imageUrls,
-        features: featuresArray, // Use parsed variable
-        specifications: specsObject, // Use parsed variable
+        features: featuresArray,
+        specifications: specsObject,
       },
     });
 
-    // Recommended: Wrap Elasticsearch in a try...catch
     try {
       await elasticClient.index({
         index: "product_index",
@@ -222,8 +211,20 @@ sellerRouter.get("/products/:id", async (req, res) => {
     const product = await prisma.product.findUnique({
       where: {
         productId: id,
-        seller_id: sellerId, // Ensures a seller can only get their own product
+        seller_id: sellerId,
       },
+      // Include category and up to 2 levels of parents to support the 3-dropdown UI
+      include: {
+        category: {
+          include: {
+            parentCategory: {
+              include: {
+                parentCategory: true
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!product) {
@@ -232,10 +233,10 @@ sellerRouter.get("/products/:id", async (req, res) => {
         .json({ error: "Product not found or you do not own this product." });
     }
 
-    // The frontend expects this exact data structure
     const productData = {
       name: product.name,
       categoryId: product.categoryId,
+      category: product.category, // Pass the full hierarchy
       price: product.price,
       originalPrice: product.originalPrice,
       availableQuantity: product.availableQuantity,
@@ -260,57 +261,29 @@ sellerRouter.get("/stats", async (req, res) => {
   }
 
   try {
-    // 1. Get total income from completed orders
     const incomeResult = await prisma.order.aggregate({
-      _sum: {
-        amount: true,
-      },
+      _sum: { amount: true },
       where: {
-        items: {
-          some: {
-            product: {
-              seller_id: sellerId,
-            },
-          },
-        },
+        items: { some: { product: { seller_id: sellerId } } },
         status: "Completed",
       },
     });
 
-    // 2. Get total products sold
     const soldResult = await prisma.orderItem.aggregate({
-      _sum: {
-        quantity: true,
-      },
+      _sum: { quantity: true },
       where: {
-        product: {
-          seller_id: sellerId,
-        },
-        order: {
-          status: "Completed",
-        },
+        product: { seller_id: sellerId },
+        order: { status: "Completed" },
       },
     });
 
-    // 3. Get total product reviews
     const reviewsResult = await prisma.review.count({
-      where: {
-        product: {
-          seller_id: sellerId,
-        },
-      },
+      where: { product: { seller_id: sellerId } },
     });
 
-    // 4. Get total cancelled orders
     const cancelledResult = await prisma.order.count({
       where: {
-        items: {
-          some: {
-            product: {
-              seller_id: sellerId,
-            },
-          },
-        },
+        items: { some: { product: { seller_id: sellerId } } },
         status: "Cancelled",
       },
     });
@@ -327,13 +300,7 @@ sellerRouter.get("/stats", async (req, res) => {
   }
 });
 
-const getPublicIdFromUrl = (url) => {
-  const parts = url.split("/");
-  const publicIdWithExtension = parts.slice(-2).join("/");
-  return publicIdWithExtension.split(".")[0];
-};
-
-// UPDATE PRODUCTS (REPLACED)
+// UPDATE PRODUCTS
 sellerRouter.put("/products/:id", upload, async (req, res) => {
   try {
     const {
@@ -406,14 +373,11 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
 
     updateData.imageUrls = [...existingImages, ...newImageFiles];
 
-    // --- Update the product in the main database ---
     const updatedProduct = await prisma.product.update({
       where: { productId: productId },
       data: updateData,
     });
 
-    // --- THIS IS THE FIX ---
-    // Try to update Elasticsearch, but don't fail the whole request
     try {
       await elasticClient.update({
         index: "product_index",
@@ -428,15 +392,11 @@ sellerRouter.put("/products/:id", upload, async (req, res) => {
         },
       });
     } catch (elasticError) {
-      // Log the error, but don't send a 500 status
       console.error("Failed to update Elasticsearch index:", elasticError);
     }
-    // --- END OF FIX ---
 
-    // Send the success response
     res.json(updatedProduct);
   } catch (e) {
-    // This will now only catch critical database errors
     console.error("Failed to update product in database:", e);
     res.status(500).json({ error: "Failed to update product" });
   }
@@ -458,7 +418,6 @@ sellerRouter.delete("/products/:productId", async (req, res) => {
         .status(403)
         .json({ error: "Access denied: You do not own this product" });
 
-    // delete image corresponding to the product from cloudinary
     const imageUrls = product.imageUrls || [];
     const getPublicIdFromUrl = (url) => {
       const parts = url.split("/");

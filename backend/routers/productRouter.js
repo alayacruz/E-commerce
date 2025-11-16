@@ -21,7 +21,7 @@ productRouter.get("/", async (req, res) => {
     };
     let orderBy = {};
 
-    // --- Build Where Clause (This logic is the same as your old file) ---
+    // --- Build Where Clause ---
     if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }
@@ -30,12 +30,45 @@ productRouter.get("/", async (req, res) => {
       if (priceMin) where.price.gte = parseFloat(priceMin);
       if (priceMax) where.price.lte = parseFloat(priceMax);
     }
+    
+    // --- ✅ START: RECURSIVE CATEGORY LOGIC ---
     if (categories) {
-      // ... (Your existing recursive category logic)
-      // This example assumes 'idList' is the final array of category IDs
-      // where.categoryId = { in: idList };
+      // 1. Get the category names from the query string (e.g., "Electronics,Phones")
+      const categoryNames = categories.split(',');
+
+      // 2. Use a recursive query to find all matching category IDs AND all their descendants
+      // This is the "magic" that finds all sub-categories automatically.
+      const categoryIds = await prisma.$queryRaw(
+        Prisma.sql`
+          WITH RECURSIVE "CategoryTree" AS (
+            -- Base case: Find the categories that match the names
+            SELECT "categoryId"
+            FROM "Category"
+            WHERE "categoryName" IN (${Prisma.join(categoryNames)})
+          
+            UNION ALL
+          
+            -- Recursive step: Find all children of the categories found above
+            SELECT c."categoryId"
+            FROM "Category" c
+            INNER JOIN "CategoryTree" ct ON c."parentCategoryId" = ct."categoryId"
+          )
+          SELECT "categoryId" FROM "CategoryTree";
+        `
+      );
+      
+      // 3. Extract the IDs from the query result
+      const idList = categoryIds.map(c => c.categoryId);
+
+      // 4. Add them to the main 'where' filter
+      if (idList.length > 0) {
+        where.categoryId = { in: idList };
+      } else {
+        // If categories were requested but none were found (e.g., a typo), return 0 products.
+        where.categoryId = { in: [] }; 
+      }
     }
-    // --- End of Where Clause ---
+    // --- ✅ END: RECURSIVE CATEGORY LOGIC ---
 
     // --- Build OrderBy Clause (Same as your old file) ---
     switch (sortBy) {
