@@ -14,12 +14,15 @@ interface Product {
   id: string; 
   name: string;
   price: number;
+  originalPrice?: number | null;
   stock: number; 
   category: string; 
   imageUrls: string[]; 
-  views: number; 
+  // views: number; // This was removed
   sales: number;
   description: string;
+  rating: number;
+  reviews: number;
 }
 
 interface Category {
@@ -57,19 +60,32 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
           throw new Error(err.error || 'Failed to fetch products');
         }
         const data = await response.json();
-        const transformedData: Product[] = data.map((p: any) => ({
-          id: p.productId,
-          name: p.name,
-          price: parseFloat(p.price),
-          stock: p.availableQuantity,
-          description: p.description || 'No description available.',
-          imageUrls: p.imageUrls && p.imageUrls.length > 0
-  ? p.imageUrls
-  : ['https://via.placeholder.com/400?text=No+Image'],
-          category: p.category ? p.category.categoryName : 'Uncategorized',
-          views: Math.floor(Math.random() * 1500) + 50,
-          sales: Math.floor(Math.random() * 200) + 10,
-        }));
+        
+        // This part was correct from our previous fix
+        const transformedData: Product[] = data.map((p: any) => {
+          const reviewsCount = p?._count?.reviews || 0;
+          const rating = p.avgRating || 0;
+
+          const sales = p.orderItems && Array.isArray(p.orderItems)
+            ? p.orderItems.reduce((acc: number, item: { quantity: number }) => acc + item.quantity, 0)
+            : 0;
+
+          return {
+            id: p.productId,
+            name: p.name,
+            price: parseFloat(p.price),
+            originalPrice: p.originalPrice ? parseFloat(p.originalPrice) : null,
+            stock: p.availableQuantity,
+            description: p.description || 'No description available.',
+            imageUrls: p.imageUrls && p.imageUrls.length > 0
+              ? p.imageUrls
+              : ['https://via.placeholder.com/400?text=No+Image'],
+            category: p.category ? p.category.categoryName : 'Uncategorized',
+            sales: sales,
+            rating: parseFloat(rating.toFixed(1)), 
+            reviews: reviewsCount
+          };
+          });
         setProducts(transformedData);
       } catch (err: unknown) {
         setError((err as Error).message);
@@ -114,10 +130,8 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
         throw new Error(err.error || 'Failed to delete product');
       }
 
-      // If delete is successful, remove it from the state
       setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
       
-      // If the detailed view was open, close it
       if (selectedProduct === productId) {
         setSelectedProduct(null);
       }
@@ -130,10 +144,27 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
   };
 
 
-  // 7. Update filter/find logic to use the 'products' state
   const filteredProducts = selectedCategory === 'All Categories'
     ? products
     : products.filter(p => p.category === selectedCategory);
+
+  // This sort logic was correct
+  const sortedAndFilteredProducts = [...filteredProducts].sort((a, b) => {
+    switch (selectedSort) {
+      case 'Name (A-Z)':
+        return a.name.localeCompare(b.name);
+      case 'Name (Z-A)':
+        return b.name.localeCompare(a.name);
+      case 'Price (Low to High)':
+        return a.price - b.price;
+      case 'Price (High to Low)':
+        return b.price - a.price;
+      case 'Stock (Low to High)':
+        return a.stock - b.stock;
+      default:
+        return 0;
+    }
+  });
 
   const selectedProductData = products.find(p => p.id === selectedProduct);
 
@@ -191,9 +222,11 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                   disabled={categories.length === 0}
                 >
                   <option value="All Categories">All Categories</option>
-
+                  
+                  {/* --- ✅ FIX 2: Changed value to categoryName --- */}
+                  {/* This ensures the filter logic `p.category === selectedCategory` works. */}
                   {categories.map((cat) => (
-                    <option key={cat.categoryId} value={cat.categoryId}>
+                    <option key={cat.categoryId} value={cat.categoryName}>
                       {cat.categoryName}
                     </option>
                   ))}
@@ -217,7 +250,7 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
         </div>
 
         
-{loading && (
+        {loading && (
           <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
             <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Your Products...</h3>
@@ -233,29 +266,29 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
           </div>
         )}
 
-        {/* 10. Update render logic to check for loading/error first */}
-        {!loading && !error && filteredProducts.length > 0 ? (
+        {/* --- ✅ FIX 3: Changed `filteredProducts` to `sortedAndFilteredProducts` --- */}
+        {!loading && !error && sortedAndFilteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
+            {sortedAndFilteredProducts.map((product) => (
               <div
-                key={product.id} // Use the string id
+                key={product.id}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all group"
               >
                 <div
                   className="relative aspect-square bg-gray-100 cursor-pointer"
-                  onClick={() => setSelectedProduct(selectedProduct === product.id ? null : product.id)} // Use string id
+                  onClick={() => setSelectedProduct(selectedProduct === product.id ? null : product.id)}
                 >
                   <img
-                    src={product.imageUrls[0]} // Use the new image path
+                    src={product.imageUrls[0]}
                     alt={product.name}
                     className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2">
-                    <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      {product.category}
+                />
+                   <div className="absolute top-2 right-2">
+                     <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                       {product.category}
                     </span>
                   </div>
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <Eye className="w-8 h-8 text-white" />
                   </div>
                 </div>
@@ -270,13 +303,13 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                     </span>
                   </div>
 
+                  {/* --- ✅ FIX 4: Replaced 'views' with 'rating' and 'reviews' --- */}
                   <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                    <span>{product.views} views</span>
+                    <span>{product.rating.toFixed(1)} ★ ({product.reviews})</span>
                     <span>{product.sales} sold</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* --- ✅ EDIT BUTTON FIXED --- */}
                     <button
                       onClick={() => onNavigate('add-product', product.id)}
                       className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
@@ -284,7 +317,6 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
                       <Edit className="w-4 h-4" />
                       Edit
                     </button>
-                    {/* --- ✅ DELETE BUTTON FIXED --- */}
                     <button
                       onClick={() => handleDelete(product.id, product.name)}
                       className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
@@ -297,7 +329,6 @@ export default function YourProducts({ onNavigate }: YourProductsProps) {
             ))}
           </div>
         ) : (
-          // 12. Only show "No Products" if not loading and no error
           !loading && !error && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />

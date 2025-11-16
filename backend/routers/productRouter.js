@@ -136,7 +136,6 @@ productRouter.get("/", async (req, res) => {
 });
 
 // 2. GET /products/:id (For ProductDetails page)
-// --- THIS ROUTE IS UNCHANGED, BUT INCLUDES THE FIXES WE DISCUSSED EARLIER ---
 productRouter.get("/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -153,9 +152,8 @@ productRouter.get("/:id", async (req, res) => {
             }
           }
         },
-        reviews: {
-          // Include reviews to calculate rating
-          select: { rating: true },
+        _count: {
+          select: { reviews: true },
         },
       },
     });
@@ -163,14 +161,6 @@ productRouter.get("/:id", async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
-
-    // Calculate rating
-    const totalRating = product.reviews.reduce(
-      (acc, review) => acc + review.rating,
-      0
-    );
-    const rating =
-      product.reviews.length > 0 ? totalRating / product.reviews.length : 0;
       
     // --- (Optional) Build Breadcrumb Array ---
     // This is a helper function to create the breadcrumb path
@@ -191,8 +181,8 @@ productRouter.get("/:id", async (req, res) => {
       price: parseFloat(product.price), 
       originalPrice: product.originalPrice ? parseFloat(product.originalPrice) : null,
       imageUrls: product.imageUrls, // Send all Cloudinary URLs
-      rating: parseFloat(rating.toFixed(1)),
-      reviews: product.reviews.length,
+      rating: parseFloat(product.avgRating.toFixed(1)), // Use pre-calculated avgRating-- triggers
+      reviews: product._count.reviews, // Use pre-calculated count-- triggers 
       description: product.description,
       features: product.features || [],
       specifications: product.specifications || {}, 

@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react'; 
-import {ArrowLeft, Package, Eye, ShoppingCart, Star, CreditCard as Edit, Trash2, AlertCircle, Loader2, MessageSquare} from 'lucide-react';
+import {ArrowLeft, Package, ShoppingCart, Star, CreditCard as Edit, Trash2, AlertCircle, Loader2, MessageSquare} from 'lucide-react';
 
 interface Product {
   id: string; 
   name: string;
   price: number;
-  originalPrice?: number;
+  originalPrice?: number | null;
   stock: number;
   category: string;
   imageUrls: string[]; 
-  views: number;
   sales: number;
   description: string; 
-  rating?: number;
-  reviews?: number;
+  rating: number;
+  reviews: number;
 }
 
 interface ProductDetailProps {
@@ -25,13 +24,9 @@ interface ProductDetailProps {
 
 interface Review {
   id: string;
-  user: {
-    first_name: string; 
-    last_name: string | null;
-  };
+  author: string;
   rating: number;
-  createdAt: string;
-  title: string;
+  date: string;
   comment: string;
 }
 
@@ -49,7 +44,7 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`http://localhost:3000/reviews/product/${product.id}`);
+        const res = await fetch(`http://localhost:3000/products/${product.id}/reviews`);
         if (!res.ok) {
           throw new Error('Failed to fetch reviews for this product');
         }
@@ -66,10 +61,13 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
 
   const defaultDescription = `${product.name} is a premium quality product designed to meet your needs. This product features excellent build quality and reliable performance. Perfect for both personal and professional use.`;
   const description = product.description || defaultDescription;
-  const rating = product.rating || 4.5;
-  const reviewsCount = product.reviews || Math.floor(product.sales * 0.6);
-  const originalPrice = product.originalPrice || product.price * 1.2;
-  const discount = product.originalPrice ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 17;
+  const rating = product.rating;
+  const reviewsCount = product.reviews;
+  const originalPrice = product.originalPrice;
+  
+  const discount = (originalPrice && originalPrice > product.price)
+    ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,18 +124,24 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                        <span className="font-medium">{rating}</span>
+                        <span className="font-medium">{rating.toFixed(1)}</span>
                         <span>({reviewsCount} reviews)</span>
                       </div>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-baseline gap-3 mb-6">
                   <span className="text-4xl font-bold text-gray-900">${product.price.toFixed(2)}</span>
-                  <span className="text-gray-500 line-through text-xl">${originalPrice.toFixed(2)}</span>
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">{discount}% OFF</span>
+                  {originalPrice && originalPrice > product.price && (
+                    <span className="text-gray-500 line-through text-xl">${originalPrice.toFixed(2)}</span>
+                  )}
+                  {discount > 0 && (
+                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">{discount}% OFF</span>
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-4 mb-6">
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center gap-2 text-gray-600 mb-1">
                       <Package className="w-5 h-5" />
@@ -149,19 +153,13 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center gap-2 text-gray-600 mb-1">
-                      <Eye className="w-5 h-5" />
-                      <span className="text-sm">Views</span>
-                    </div>
-                    <p className="text-xl font-bold text-gray-900">{product.views}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-gray-600 mb-1">
                       <ShoppingCart className="w-5 h-5" />
                       <span className="text-sm">Sold</span>
                     </div>
                     <p className="text-xl font-bold text-gray-900">{product.sales}</p>
                   </div>
                 </div>
+                
                 {product.stock < 20 && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -172,26 +170,20 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
                   </div>
                 )}
               </div>
+              
               <div className="mb-6 flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Product Description</h3>
                 <p className="text-gray-600 leading-relaxed">{description}</p>
               </div>
+              
               <div className="border-t border-gray-200 pt-6">
-                <div className="grid grid-cols-4 gap-3 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-gray-900">${(product.price * product.sales).toFixed(2)}</p>
                     <p className="text-sm text-gray-600">Revenue</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{((product.sales / (product.views || 1)) * 100).toFixed(1)}%</p>
-                    <p className="text-sm text-gray-600">Conversion</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{Math.floor(product.views / 30)}</p>
-                    <p className="text-sm text-gray-600">Daily Views</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{rating}</p>
+                    <p className="text-2xl font-bold text-gray-900">{rating.toFixed(1)}</p>
                     <p className="text-sm text-gray-600">Rating</p>
                   </div>
                 </div>
@@ -251,36 +243,27 @@ export default function ProductDetail({ product, onBack, onEdit, onDelete }: Pro
             {/* Reviews List */}
             {!loading && !error && reviews.length > 0 && (
               <div className="space-y-6">
-                {reviews.map((review) => {
-                  // Compute the username just like in your auth routes
-                  const username = review.user.last_name
-                    ? `${review.user.first_name} ${review.user.last_name}`
-                    : review.user.first_name;
-
-                  return (
-                    <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-4">
-                          {/* Use the computed username variable */}
-                          <span className="font-medium text-gray-900">{username}</span> 
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
+                {reviews.map((review) => (
+                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-4">
+                        <span className="font-medium text-gray-900">{review.author}</span> 
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${
+                                i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
                         </div>
-                        <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                       </div>
-                      {/* <h4 className="font-semibold text-gray-800 text-lg mb-1">{review.title}</h4> */}
-                      <p className="text-gray-700">{review.comment}</p>
+                      <span className="text-sm text-gray-500">{review.date}</span>
                     </div>
-                  );
-                })}
+                    <p className="text-gray-700">{review.comment}</p>
+                  </div>
+                ))}
               </div>
             )}
             </div>
