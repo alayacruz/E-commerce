@@ -142,7 +142,7 @@ const HomePage: React.FC = () => {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                to={`/products?category=${category.name.toLowerCase()}`}
+                to={`/products?category=${category.id}`}
                 className="group"
               >
                 <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 text-center">
