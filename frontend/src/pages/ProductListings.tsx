@@ -78,7 +78,6 @@ const ProductListings: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategories, sortBy, priceRange]);
 
-  // 3. Sync URL category param with state
 // 3. Sync URL category param with state
 useEffect(() => {
   // Check if we have the ID from the URL AND the category list has finished loading
