@@ -18,7 +18,6 @@ interface Product {
   stock: number; 
   category: string; 
   imageUrls: string[]; 
-  // views: number; // This was removed
   sales: number;
   description: string;
   rating: number;

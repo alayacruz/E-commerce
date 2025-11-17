@@ -7,6 +7,18 @@ const productRouter = express.Router();
 
 // In your productRouter.js file:
 
+productRouter.get("/featured", async (req, res) => {
+  try {
+    const featuredProducts = await prisma.product.findMany({ take: 4 });
+    console.log(featuredProducts)
+    return res.status(200).json(featuredProducts);
+  } catch (e) {
+    console.log(e);
+    return res.status(500).json({ error: e.message });
+  
+  }
+});
+
 productRouter.get("/", async (req, res) => {
   // 1. Get pagination params from query, with defaults
   const page = parseInt(req.query.page) || 1;
@@ -30,11 +42,11 @@ productRouter.get("/", async (req, res) => {
       if (priceMin) where.price.gte = parseFloat(priceMin);
       if (priceMax) where.price.lte = parseFloat(priceMax);
     }
-    
+
     // --- ✅ START: RECURSIVE CATEGORY LOGIC ---
     if (categories) {
       // 1. Get the category names from the query string (e.g., "Electronics,Phones")
-      const categoryNames = categories.split(',');
+      const categoryNames = categories.split(",");
 
       // 2. Use a recursive query to find all matching category IDs AND all their descendants
       // This is the "magic" that finds all sub-categories automatically.
@@ -56,26 +68,31 @@ productRouter.get("/", async (req, res) => {
           SELECT "categoryId" FROM "CategoryTree";
         `
       );
-      
+
       // 3. Extract the IDs from the query result
-      const idList = categoryIds.map(c => c.categoryId);
+      const idList = categoryIds.map((c) => c.categoryId);
 
       // 4. Add them to the main 'where' filter
       if (idList.length > 0) {
         where.categoryId = { in: idList };
       } else {
         // If categories were requested but none were found (e.g., a typo), return 0 products.
-        where.categoryId = { in: [] }; 
+        where.categoryId = { in: [] };
       }
     }
     // --- ✅ END: RECURSIVE CATEGORY LOGIC ---
 
     // --- Build OrderBy Clause (Same as your old file) ---
     switch (sortBy) {
-      case "price-low": orderBy = { price: "asc" }; break;
-      case "price-high": orderBy = { price: "desc" }; break;
+      case "price-low":
+        orderBy = { price: "asc" };
+        break;
+      case "price-high":
+        orderBy = { price: "desc" };
+        break;
       // ... other sort options
-      default: orderBy = { name: "asc" };
+      default:
+        orderBy = { name: "asc" };
     }
 
     // 2. Run two queries at the same time: one to get the products for the page
@@ -101,7 +118,10 @@ productRouter.get("/", async (req, res) => {
 
     // --- Calculate ratings and transform data (Same as your old file) ---
     const productsWithRatings = products.map((p) => {
-      const totalRating = p.reviews.reduce((acc, review) => acc + review.rating, 0);
+      const totalRating = p.reviews.reduce(
+        (acc, review) => acc + review.rating,
+        0
+      );
       const rating = p.reviews.length > 0 ? totalRating / p.reviews.length : 0;
       return {
         id: p.productId,
@@ -126,9 +146,8 @@ productRouter.get("/", async (req, res) => {
       products: productsWithRatings,
       currentPage: page,
       totalPages: totalPages,
-      totalProducts: totalProducts
+      totalProducts: totalProducts,
     });
-
   } catch (e) {
     console.error("Failed to fetch products:", e);
     res.status(500).json({ error: "Failed to fetch products" });
@@ -147,10 +166,10 @@ productRouter.get("/:id", async (req, res) => {
           include: {
             parentCategory: {
               include: {
-                parentCategory: true // Include parent's parent
-              }
-            }
-          }
+                parentCategory: true, // Include parent's parent
+              },
+            },
+          },
         },
         _count: {
           select: { reviews: true },
@@ -161,7 +180,7 @@ productRouter.get("/:id", async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
-      
+
     // --- (Optional) Build Breadcrumb Array ---
     // This is a helper function to create the breadcrumb path
     const getBreadcrumbs = (category) => {
@@ -178,14 +197,16 @@ productRouter.get("/:id", async (req, res) => {
     const productDetails = {
       id: product.productId,
       name: product.name,
-      price: parseFloat(product.price), 
-      originalPrice: product.originalPrice ? parseFloat(product.originalPrice) : null,
+      price: parseFloat(product.price),
+      originalPrice: product.originalPrice
+        ? parseFloat(product.originalPrice)
+        : null,
       imageUrls: product.imageUrls, // Send all Cloudinary URLs
       rating: parseFloat(product.avgRating.toFixed(1)), // Use pre-calculated avgRating-- triggers
-      reviews: product._count.reviews, // Use pre-calculated count-- triggers 
+      reviews: product._count.reviews, // Use pre-calculated count-- triggers
       description: product.description,
       features: product.features || [],
-      specifications: product.specifications || {}, 
+      specifications: product.specifications || {},
       inStock: product.availableQuantity > 0,
       category: product.category?.categoryName || "Uncategorized",
       breadcrumbs: product.category ? getBreadcrumbs(product.category) : [],
