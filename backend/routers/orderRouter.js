@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const orderRouter = express.Router();
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
+const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
 const PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com";
 
 /**
@@ -115,7 +115,7 @@ orderRouter.get("/byBuyer", async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       where: { buyer_id: buyerId },
-        include: {
+      include: {
         items: {
           include: {
             product: {
@@ -126,18 +126,18 @@ orderRouter.get("/byBuyer", async (req, res) => {
                       select: {
                         email_id: true,
                         phoneNumbers: {
-                          select: { phone_no: true }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          } 
-      }
-    },
-      orderBy: { order_date: 'desc' },
+                          select: { phone_no: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { order_date: "desc" },
     });
     res.json(orders);
   } catch (error) {
@@ -152,7 +152,7 @@ orderRouter.patch("/:orderId/confirm", async (req, res) => {
     const updatedOrder = await prisma.order.update({
       where: { order_id: orderId },
       // Status comes from your schema.prisma
-      data: { status: "PROCESSING" }, 
+      data: { status: "PROCESSING" },
     });
     res.json(updatedOrder);
   } catch (error) {
@@ -163,10 +163,12 @@ orderRouter.patch("/:orderId/confirm", async (req, res) => {
 // Route for seller to SHIP an order
 orderRouter.patch("/:orderId/ship", async (req, res) => {
   const { orderId } = req.params;
-  const { trackingNumber, carrier, sellerId } = req.body; 
+  const { trackingNumber, carrier, sellerId } = req.body;
 
   if (!trackingNumber || !carrier || !sellerId) {
-    return res.status(400).json({ error: "Tracking, carrier, and sellerId required." });
+    return res
+      .status(400)
+      .json({ error: "Tracking, carrier, and sellerId required." });
   }
 
   try {
@@ -210,13 +212,21 @@ orderRouter.get("/bySeller", async (req, res) => {
       },
       include: {
         items: { include: { product: true } },
-        buyer: { include: { user: { select: { first_name: true, last_name: true, email_id: true } } } },
+        buyer: {
+          include: {
+            user: {
+              select: { first_name: true, last_name: true, email_id: true },
+            },
+          },
+        },
       },
-      orderBy: { order_date: 'desc' },
+      orderBy: { order_date: "desc" },
     });
 
-    const sellerOrders = orders.map(order => {
-      const sellerItems = order.items.filter(item => item.product.seller_id === sellerId);
+    const sellerOrders = orders.map((order) => {
+      const sellerItems = order.items.filter(
+        (item) => item.product.seller_id === sellerId
+      );
       return { ...order, items: sellerItems };
     });
     res.json(sellerOrders);
@@ -291,66 +301,68 @@ orderRouter.post("/buyNow", async (req, res) => {
       return res.status(400).json({ error: "Unsupported payment method." });
     }
     const orderId = uuid4();
-    const transactionResult = await prisma.$transaction(async (tx) => {
-      // 1. Decrement inventory (Commitment before payment is finalized, typical for high-demand)
-      await tx.product.update({
-        where: { productId: productId },
-        data: { availableQuantity: { decrement: numericQuantity } },
-      });
+    const transactionResult = await prisma.$transaction(
+      async (tx) => {
+        // 1. Decrement inventory (Commitment before payment is finalized, typical for high-demand)
+        await tx.product.update({
+          where: { productId: productId },
+          data: { availableQuantity: { decrement: numericQuantity } },
+        });
 
-      // 2. Create the Order
-      const newOrder = await tx.order.create({
-        data: {
-          order_id: orderId,
-          order_date: new Date(),
-          // Set to INITIATED for PayPal, PENDING for CoD
-          status: paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING",
-          amount: new Decimal(numericAmount),
-          buyer_id: buyerId,
-        },
-      });
-
-      // 3. Create OrderItem
-      await tx.orderItem.create({
-        data: {
-          order_id: orderId,
-          product_id: productId,
-          quantity: quantity,
-        },
-      });
-
-      // 4. Create Payment (Record payment intent and external ID)
-      await tx.payment.create({
-        data: {
-          amount: new Decimal(numericAmount),
-          status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED",
-          date: new Date(),
-          method: paymentMethod || "CoD",
-          orderId: newOrder.order_id,
-          external_transaction_id: paymentExternalId || `cod_${newOrder.order_id}`,
-          buyer: {
-            connect: {
-              buyer_id: buyerId 
-            }
+        // 2. Create the Order
+        const newOrder = await tx.order.create({
+          data: {
+            order_id: orderId,
+            order_date: new Date(),
+            // Set to INITIATED for PayPal, PENDING for CoD
+            status:
+              paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING",
+            amount: new Decimal(numericAmount),
+            buyer_id: buyerId,
           },
-          order: {
-            connect: {
-              order_id: newOrder.order_id
-            }
-          }
-        },
-      });
+        });
 
-      return newOrder;
-    },
-      {timeout: 10000,
-    });
+        // 3. Create OrderItem
+        await tx.orderItem.create({
+          data: {
+            order_id: orderId,
+            product_id: productId,
+            quantity: quantity,
+          },
+        });
+
+        // 4. Create Payment (Record payment intent and external ID)
+        await tx.payment.create({
+          data: {
+            amount: new Decimal(numericAmount),
+            status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED",
+            date: new Date(),
+            method: paymentMethod || "CoD",
+            orderId: newOrder.order_id,
+            external_transaction_id:
+              paymentExternalId || `cod_${newOrder.order_id}`,
+            buyer: {
+              connect: {
+                buyer_id: buyerId,
+              },
+            },
+            order: {
+              connect: {
+                order_id: newOrder.order_id,
+              },
+            },
+          },
+        });
+
+        return newOrder;
+      },
+      { timeout: 10000 }
+    );
 
     const orderWithPayment = {
       ...transactionResult,
-      paymentMethod: paymentMethod // This is 'CoD' or 'PayPal' from req.body
+      paymentMethod: paymentMethod, // This is 'CoD' or 'PayPal' from req.body
     };
-  
 
     // 5. Send PayPal link back to client (If applicable)
     if (paymentMethod === "PayPal" && approvalUrl) {
@@ -375,20 +387,18 @@ orderRouter.post("/buyNow", async (req, res) => {
 // orderRouter.js
 
 orderRouter.post("/createFromCart", async (req, res) => {
-  const {
-    buyerId,
-    paymentMethod,
-    amount, 
-    returnUrl, 
-    cancelUrl,
-    orderId,
-  } = req.body;
+  const { buyerId, paymentMethod, amount, returnUrl, cancelUrl, orderId } =
+    req.body;
 
   if (!buyerId || !paymentMethod || !amount) {
-    return res.status(400).json({ error: "Missing required order information." });
+    return res
+      .status(400)
+      .json({ error: "Missing required order information." });
   }
   if (paymentMethod === "PayPal" && (!returnUrl || !cancelUrl)) {
-    return res.status(400).json({ error: "PayPal requires returnUrl and cancelUrl." });
+    return res
+      .status(400)
+      .json({ error: "PayPal requires returnUrl and cancelUrl." });
   }
 
   try {
@@ -418,101 +428,105 @@ orderRouter.post("/createFromCart", async (req, res) => {
 
     // 3. --- Start Atomic Database Transaction ---
     // This block now *only* contains fast database operations
-    const newOrder = await prisma.$transaction(async (tx) => {
-      // 4. Get the user's cart securely from the DB
-      const cart = await tx.cart.findUnique({
-        where: { buyerId: buyerId },
-        include: { items: { include: { product: true } } },
-      });
+    const newOrder = await prisma.$transaction(
+      async (tx) => {
+        // 4. Get the user's cart securely from the DB
+        const cart = await tx.cart.findUnique({
+          where: { buyerId: buyerId },
+          include: { items: { include: { product: true } } },
+        });
 
-      if (!cart || cart.items.length === 0) {
-        throw new Error("Your cart is empty.");
-      }
-
-      // 5. Check stock for all items
-      for (const item of cart.items) {
-        if (item.product.availableQuantity < item.quantity) {
-          throw new Error(`Not enough stock for: ${item.product.name}`);
+        if (!cart || cart.items.length === 0) {
+          throw new Error("Your cart is empty.");
         }
-      }
 
-      // 6. Create PayPal Order (if needed) *before* creating the local order
-      // 🛑 THIS SECTION WAS MOVED 🛑
+        // 5. Check stock for all items
+        for (const item of cart.items) {
+          if (item.product.availableQuantity < item.quantity) {
+            throw new Error(`Not enough stock for: ${item.product.name}`);
+          }
+        }
 
-      const orderId = uuid4(); // Generate a unique ID for the order
+        // 6. Create PayPal Order (if needed) *before* creating the local order
+        // 🛑 THIS SECTION WAS MOVED 🛑
 
-      // 7. Create the Order
-      const order = await tx.order.create({
-        data: {
-          order_id: orderId,
-          order_date: new Date(),
-          status: paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING", // PENDING for CoD
-          amount: new Decimal(amount),
-          buyer_id: buyerId,
-        },
-      });
+        const orderId = uuid4(); // Generate a unique ID for the order
 
-      // 8. Create OrderItems from CartItems (using createMany)
-      const orderItemsData = cart.items.map((item) => ({
-        order_item_id: generateOrderItemId(order.order_id, item.productId),
-        order_id: order.order_id,
-        product_id: item.productId,
-        quantity: item.quantity,
-      }));
-
-      await tx.orderItem.createMany({
-        data: orderItemsData,
-      });
-
-      // 9. Update stock quantity for each product
-      const stockUpdates = cart.items.map((item) =>
-        tx.product.update({
-          where: { productId: item.productId },
+        // 7. Create the Order
+        const order = await tx.order.create({
           data: {
-            availableQuantity: {
-              decrement: item.quantity,
+            order_id: orderId,
+            order_date: new Date(),
+            status:
+              paymentMethod === "PayPal" ? "PAYMENT_INITIATED" : "PENDING", // PENDING for CoD
+            amount: new Decimal(amount),
+            buyer_id: buyerId,
+          },
+        });
+
+        // 8. Create OrderItems from CartItems (using createMany)
+        const orderItemsData = cart.items.map((item) => ({
+          order_item_id: generateOrderItemId(order.order_id, item.productId),
+          order_id: order.order_id,
+          product_id: item.productId,
+          quantity: item.quantity,
+        }));
+
+        await tx.orderItem.createMany({
+          data: orderItemsData,
+        });
+
+        // 9. Update stock quantity for each product
+        const stockUpdates = cart.items.map((item) =>
+          tx.product.update({
+            where: { productId: item.productId },
+            data: {
+              availableQuantity: {
+                decrement: item.quantity,
+              },
+            },
+          })
+        );
+        await Promise.all(stockUpdates);
+
+        // 10. Create the Payment record
+        await tx.payment.create({
+          data: {
+            amount: new Decimal(amount),
+            status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED",
+            method: paymentMethod,
+            date: new Date(),
+            external_transaction_id:
+              paymentExternalId || `cod_${order.order_id}`,
+            buyer: {
+              connect: {
+                buyer_id: buyerId,
+              },
+            },
+            order: {
+              connect: {
+                order_id: order.order_id,
+              },
             },
           },
-        })
-      );
-      await Promise.all(stockUpdates);
+        });
 
-      // 10. Create the Payment record
-      await tx.payment.create({
-        data: {
-          amount: new Decimal(amount), 
-          status: paymentMethod === "PayPal" ? "PENDING" : "INITIATED", 
-          method: paymentMethod,
-          date: new Date(),
-          external_transaction_id: paymentExternalId || `cod_${order.order_id}`,
-          buyer: {
-            connect: {
-              buyer_id: buyerId 
-            }
-          } ,
-          order: {
-            connect: {
-              order_id: order.order_id 
-            }
-          }
-        },
-      });
+        // 11. Clear the user's cart
+        await tx.cartItem.deleteMany({
+          where: { cartId: cart.cartId },
+        });
 
-      // 11. Clear the user's cart
-      await tx.cartItem.deleteMany({
-        where: { cartId: cart.cartId },
-      });
-
-      return order; 
-    }, 
-    {
-      timeout: 10000, 
-    });
+        return order;
+      },
+      {
+        timeout: 10000,
+      }
+    );
 
     // This is the object you created
     const orderWithPayment = {
       ...newOrder, // 'newOrder' is the transaction result
-      paymentMethod: paymentMethod // This is 'CoD' or 'PayPal' from req.body
+      paymentMethod: paymentMethod, // This is 'CoD' or 'PayPal' from req.body
     };
 
     // --- End Atomic Database Transaction ---
@@ -531,7 +545,6 @@ orderRouter.post("/createFromCart", async (req, res) => {
       message: "Order placed successfully (CoD).",
       order: orderWithPayment,
     });
-    
   } catch (error) {
     console.error("Failed to place order:", error);
     res.status(400).json({ error: error.message });
