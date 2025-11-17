@@ -55,7 +55,7 @@ const ProductListings: React.FC = () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const PRODUCTS_PER_PAGE = 9;
 
-  const categoryUrlParam = searchParams.get("category");
+  const categoryIdUrlParam = searchParams.get("categoryId");
   const searchQuery = searchParams.get("search");
 
   // 1. Fetch Categories
@@ -79,11 +79,23 @@ const ProductListings: React.FC = () => {
   }, [searchQuery, selectedCategories, sortBy, priceRange]);
 
   // 3. Sync URL category param with state
-  useEffect(() => {
-    if (categoryUrlParam) {
-      setSelectedCategories([categoryUrlParam]);
+// 3. Sync URL category param with state
+useEffect(() => {
+  // Check if we have the ID from the URL AND the category list has finished loading
+  if (categoryIdUrlParam && categories.length > 0) {
+    // Find the full category object that matches the ID from the URL
+    const matchingCategory = categories.find(
+      (cat) => cat.categoryId === parseInt(categoryIdUrlParam)
+    );
+
+    if (matchingCategory) {
+      // Set the state using the NAME, because the rest of your
+      // component (checkboxes, filters) is built to use names.
+      setSelectedCategories([matchingCategory.categoryName]);
     }
-  }, [categoryUrlParam]);
+  }
+  // This effect must run when the URL param changes OR when the categories finish loading
+}, [categoryIdUrlParam, categories]);
 
   // 4. Main Fetch Products Effect (UNIFIED)
   // ========== MAIN CHANGE: Modified fetch products effect ==========
