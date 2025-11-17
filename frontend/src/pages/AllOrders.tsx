@@ -8,14 +8,14 @@ interface AllOrdersProps {
   onNavigate: (page: string) => void;
 }
 
-type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'cancelled' | 'delivered';
+type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   PENDING: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
   PROCESSING: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Clock },
   SHIPPED: { label: 'Shipped', color: 'bg-blue-100 text-blue-800', icon: Truck },
   DELIVERED: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
+ 
 };
 
 export default function AllOrders({ onNavigate }: AllOrdersProps) {
@@ -128,7 +128,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
     { id: 'PENDING', label: 'Pending', count: orders.filter(o => o.status === 'PENDING').length },
     { id: 'PROCESSING', label: 'Processing', count: orders.filter(o => o.status === 'PROCESSING').length },
     { id: 'SHIPPED', label: 'Shipped', count: orders.filter(o => o.status === 'SHIPPED').length },
-    { id: 'CANCELLED', label: 'Cancelled', count: orders.filter(o => o.status === 'CANCELLED').length },
+    
   ];
 
   const filteredOrders = activeFilter === 'all'
