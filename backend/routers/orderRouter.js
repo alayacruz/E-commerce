@@ -447,9 +447,6 @@ orderRouter.post("/createFromCart", async (req, res) => {
           }
         }
 
-        // 6. Create PayPal Order (if needed) *before* creating the local order
-        // 🛑 THIS SECTION WAS MOVED 🛑
-
         const orderId = uuid4(); // Generate a unique ID for the order
 
         // 7. Create the Order
@@ -540,7 +537,6 @@ orderRouter.post("/createFromCart", async (req, res) => {
         paypal_order_id: paymentExternalId,
       });
     }
-
     res.status(201).json({
       message: "Order placed successfully (CoD).",
       order: orderWithPayment,
