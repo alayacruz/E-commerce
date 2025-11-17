@@ -10,10 +10,12 @@ const productRouter = express.Router();
 productRouter.get("/featured", async (req, res) => {
   try {
     const featuredProducts = await prisma.product.findMany({ take: 4 });
+    console.log(featuredProducts)
     return res.status(200).json(featuredProducts);
   } catch (e) {
     console.log(e);
     return res.status(500).json({ error: e.message });
+  
   }
 });
 
