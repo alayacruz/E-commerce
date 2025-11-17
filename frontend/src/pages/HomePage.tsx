@@ -130,8 +130,7 @@ const HomePage: React.FC = () => {
           className="absolute bottom-10 left-10 w-24 md:w-28 lg:w-32 drop-shadow-2xl animate-float-slow"
         />
       </section>
-
-      {/* Categories Section */}
+      {/* Categories Section
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -166,8 +165,7 @@ const HomePage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
-
+      </section> */}
       {/* Featured Products */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
