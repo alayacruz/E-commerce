@@ -156,7 +156,7 @@ const AddNewAddress: React.FC<AddNewAddressProps> = ({ onSave, onCancel }) => {
 };
 
 type StoredUser = {
-  userId: string; 
+  userId: string;
   username: string;
   email: string;
   phoneNumbers: string[];
@@ -256,7 +256,7 @@ const UserProfile: React.FC = () => {
     };
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         alert('You are not logged in.');
         return;
@@ -616,14 +616,7 @@ const UserProfile: React.FC = () => {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Member Since
-                    </label>
-                    <p className="text-gray-900 py-2">
-                      {formatJoinedDate(userInfo.dateJoined)}
-                    </p>
-                  </div>
+
                 </div>
               </div>
             )}
@@ -635,7 +628,7 @@ const UserProfile: React.FC = () => {
                   Order History
                 </h2>
                 <UserOrders />
-                
+
               </div>
             )}
 
