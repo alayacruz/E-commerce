@@ -8,7 +8,6 @@ import {
   MapPin,
   CreditCard,
   Download,
-  Share2,
   Star,
 } from "lucide-react";
 
@@ -408,10 +407,7 @@ const OrderConfirmed: React.FC = () => {
             <Download className="w-5 h-5 mr-2" />
             Download Invoice
           </button>
-          <button className="inline-flex items-center justify-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl border-2 border-blue-600 hover:bg-blue-50 transition-all duration-200 transform hover:scale-105">
-            <Share2 className="w-5 h-5 mr-2" />
-            Share Order
-          </button>
+          
           <button
             onClick={handleTrackOrders}
             className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white font-semibold rounded-xl hover:bg-gray-700 transition-all duration-200 transform hover:scale-105"
@@ -435,48 +431,6 @@ const OrderConfirmed: React.FC = () => {
           >
             Continue Shopping
           </Link>
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-12 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-            What happens next?
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">
-                Order Processing
-              </h4>
-              <p className="text-gray-600 text-sm">
-                We'll prepare your items with care and quality check each
-                product
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Truck className="w-6 h-6 text-white" />
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">
-                Shipping Updates
-              </h4>
-              <p className="text-gray-600 text-sm">
-                You'll receive real-time tracking information via email and SMS
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Star className="w-6 h-6 text-white" />
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">Rate & Review</h4>
-              <p className="text-gray-600 text-sm">
-                Share your experience to help other customers make informed
-                decisions
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Support */}

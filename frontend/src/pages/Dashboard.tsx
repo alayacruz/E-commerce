@@ -21,7 +21,6 @@ interface SellerStats {
   income: number;
   sold: number;
   reviews: number;
-  cancelled: number;
 }
 
 const overviewCardsConfig = [
@@ -46,13 +45,7 @@ const overviewCardsConfig = [
     color: 'bg-amber-500',
     clickable: true,
   },
-  {
-    id: 'cancelled',
-    title: 'Orders Cancelled',
-    icon: Eye, 
-    color: 'bg-red-500',
-    clickable: false,
-  },
+ 
 ];
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
@@ -131,8 +124,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         return stats.sold.toLocaleString();
       case 'reviews':
         return stats.reviews.toLocaleString();
-      case 'cancelled':
-        return stats.cancelled.toLocaleString();
       default:
         return '0';
     }
@@ -159,7 +150,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
 
           {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {overviewCardsConfig.map((card) => {
               const Icon = card.icon;
               return (

@@ -236,7 +236,7 @@ sellerRouter.get("/products/:id", async (req, res) => {
     const productData = {
       name: product.name,
       categoryId: product.categoryId,
-      category: product.category, // Pass the full hierarchy
+      category: product.category,
       price: product.price,
       originalPrice: product.originalPrice,
       availableQuantity: product.availableQuantity,
@@ -254,6 +254,8 @@ sellerRouter.get("/products/:id", async (req, res) => {
 });
 
 // seller stats displayed on dashboard
+// ... existing imports and setup
+
 sellerRouter.get("/stats", async (req, res) => {
   const sellerId = req.user?.userId;
   if (!sellerId) {
@@ -261,19 +263,29 @@ sellerRouter.get("/stats", async (req, res) => {
   }
 
   try {
-    const incomeResult = await prisma.order.aggregate({
-      _sum: { amount: true },
+    const completedOrderItems = await prisma.orderItem.findMany({
       where: {
-        items: { some: { product: { seller_id: sellerId } } },
-        status: "Completed",
+        product: { seller_id: sellerId },
+        order: { status: "DELIVERED" }, 
       },
+      include: {
+        product: {
+          select: { price: true }
+        }
+      }
     });
 
+    const totalIncome = completedOrderItems.reduce((acc, item) => {
+      const itemPrice = item.price || item.product.price; 
+      return acc + (itemPrice * item.quantity);
+    }, 0);
+
+    
     const soldResult = await prisma.orderItem.aggregate({
       _sum: { quantity: true },
       where: {
         product: { seller_id: sellerId },
-        order: { status: "Completed" },
+        order: { status: "DELIVERED" }, 
       },
     });
 
@@ -284,12 +296,12 @@ sellerRouter.get("/stats", async (req, res) => {
     const cancelledResult = await prisma.order.count({
       where: {
         items: { some: { product: { seller_id: sellerId } } },
-        status: "Cancelled",
+        status: "Cancelled", 
       },
     });
 
     res.json({
-      income: incomeResult._sum.amount || 0,
+      income: totalIncome || 0,
       sold: soldResult._sum.quantity || 0,
       reviews: reviewsResult || 0,
       cancelled: cancelledResult || 0,
