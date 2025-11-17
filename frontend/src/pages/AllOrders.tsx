@@ -275,10 +275,7 @@ export default function AllOrders({ onNavigate }: AllOrdersProps) {
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
-                        <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-gray-600">Shipping info not loaded</p>
-                        </div>
+                        
                       </div>
                     </div>
                   </div>
