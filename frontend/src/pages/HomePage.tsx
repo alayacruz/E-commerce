@@ -131,7 +131,7 @@ const HomePage: React.FC = () => {
 
 
       {/* Categories Section */}
-      <section className="py-16">
+      {/* <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
@@ -141,10 +141,10 @@ const HomePage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
             {categories.map((category) => (
               <Link
-                key={category.id}
-                to={`/products?category=${category.name.toLowerCase()}`}
-                className="group"
-              >
+  key={category.id}
+  to={`/products?category=${category.name}`} // <-- FIXED
+  className="group"
+>
                 <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 text-center">
                   <div className="aspect-square mb-4 overflow-hidden rounded-lg">
                     <img
@@ -161,7 +161,7 @@ const HomePage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Featured Products */}
       <section className="py-16 bg-white">

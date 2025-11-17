@@ -95,120 +95,193 @@ useEffect(() => {
   }
   // This effect must run when the URL param changes OR when the categories finish loading
 }, [categoryIdUrlParam, categories]);
+// 4. Main Fetch Products Effect (UNIFIED)
+useEffect(() => {
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
 
-  // 4. Main Fetch Products Effect (UNIFIED)
-  // ========== MAIN CHANGE: Modified fetch products effect ==========
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
+    try {
+      // Path 1: Search Query exists (No change)
+      // This remains the highest priority.
+      if (searchQuery && searchQuery.trim()) {
+        const response = await fetch("http://localhost:3000/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ searchStr: searchQuery.trim() }),
+        });
 
-      try {
-        // CHANGE 1: If there's a search query, use the Elasticsearch search endpoint
-        if (searchQuery && searchQuery.trim()) {
-          const response = await fetch("http://localhost:3000/search", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ searchStr: searchQuery.trim() }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to perform search. Check the backend API.");
-          }
-
-          let searchResults = await response.json();
-
-          // CHANGE 2: Map backend response to frontend Product interface
-          // Backend returns: productId, name, description, price, availableQuantity, imageUrls, etc.
-          let mappedProducts = searchResults.map((p: any) => ({
-            id: p.productId,
-            name: p.name,
-            price: parseFloat(p.price),
-            originalPrice: p.originalPrice
-              ? parseFloat(p.originalPrice)
-              : undefined,
-            image: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : "",
-            rating: p.rating || 0,
-            reviews: p.reviewCount || 0,
-            category: p.category || "",
-            description: p.description || "",
-          }));
-
-          // CHANGE 3: Apply client-side filtering for categories and price range
-          if (selectedCategories.length > 0) {
-            mappedProducts = mappedProducts.filter((p: Product) =>
-              selectedCategories.includes(p.category)
-            );
-          }
-
-          mappedProducts = mappedProducts.filter(
-            (p: Product) => p.price >= priceRange[0] && p.price <= priceRange[1]
-          );
-
-          // CHANGE 4: Apply client-side sorting
-          switch (sortBy) {
-            case "price-low":
-              mappedProducts.sort(
-                (a: Product, b: Product) => a.price - b.price
-              );
-              break;
-            case "price-high":
-              mappedProducts.sort(
-                (a: Product, b: Product) => b.price - a.price
-              );
-              break;
-            case "rating":
-              mappedProducts.sort(
-                (a: Product, b: Product) => b.rating - a.rating
-              );
-              break;
-            // 'featured' and 'newest' keep the default order from search
-          }
-
-          // CHANGE 5: Apply client-side pagination
-          const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-          const endIndex = startIndex + PRODUCTS_PER_PAGE;
-          const paginatedProducts = mappedProducts.slice(startIndex, endIndex);
-
-          setProducts(paginatedProducts);
-          setTotalProducts(mappedProducts.length);
-          setTotalPages(Math.ceil(mappedProducts.length / PRODUCTS_PER_PAGE));
-        } else {
-          // CHANGE 6: If no search query, use the existing /products endpoint
-          const params = new URLSearchParams();
-          if (selectedCategories.length > 0)
-            params.append("categories", selectedCategories.join(","));
-          params.append("sortBy", sortBy);
-          params.append("priceMin", String(priceRange[0]));
-          params.append("priceMax", String(priceRange[1]));
-          params.append("page", String(currentPage));
-          params.append("limit", String(PRODUCTS_PER_PAGE));
-
-          const response = await fetch(
-            `http://localhost:3000/products?${params.toString()}`
-          );
-          if (!response.ok) {
-            throw new Error("Failed to fetch products. Check the backend API.");
-          }
-
-          const data = await response.json();
-          setProducts(data.products);
-          setTotalPages(data.totalPages);
-          setTotalProducts(data.totalProducts);
+        if (!response.ok) {
+          throw new Error("Failed to perform search. Check the backend API.");
         }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+
+        let searchResults = await response.json();
+        let mappedProducts = searchResults.map((p: any) => ({
+          id: p.productId,
+          name: p.name,
+          price: parseFloat(p.price),
+          originalPrice: p.originalPrice
+            ? parseFloat(p.originalPrice)
+            : undefined,
+          image: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : "",
+          rating: p.rating || 0,
+          reviews: p.reviewCount || 0,
+          category: p.category || "",
+          description: p.description || "",
+        }));
+
+        // Apply client-side filtering for categories and price
+        if (selectedCategories.length > 0) {
+          mappedProducts = mappedProducts.filter((p: Product) =>
+            selectedCategories.includes(p.category)
+          );
+        }
+        mappedProducts = mappedProducts.filter(
+          (p: Product) => p.price >= priceRange[0] && p.price <= priceRange[1]
+        );
+
+        // Apply client-side sorting
+        switch (sortBy) {
+          case "price-low":
+            mappedProducts.sort((a, b) => a.price - b.price);
+            break;
+          case "price-high":
+            mappedProducts.sort((a, b) => b.price - a.price);
+            break;
+          case "rating":
+            mappedProducts.sort((a, b) => b.rating - a.rating);
+            break;
+        }
+
+        // Apply client-side pagination
+        const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+        const endIndex = startIndex + PRODUCTS_PER_PAGE;
+        const paginatedProducts = mappedProducts.slice(startIndex, endIndex);
+
+        setProducts(paginatedProducts);
+        setTotalProducts(mappedProducts.length);
+        setTotalPages(Math.ceil(mappedProducts.length / PRODUCTS_PER_PAGE));
+      } 
+      
+      // ==========================================================
+      // START OF NEW LOGIC
+      // Path 2: NO Search, but Category ID from URL exists
+      // This is the new path you wanted.
+      // ==========================================================
+      else if (categoryIdUrlParam && !searchQuery) {
+        
+        // 1. Call the new API endpoint
+        const response = await fetch(
+          `http://localhost:3000/category/${categoryIdUrlParam}/products`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch products for this category.");
+        }
+
+        let categoryProducts = await response.json();
+
+        // 2. Map the data
+        // Your /:id/products API doesn't return the category name,
+        // but Effect 3 already set it in 'selectedCategories'.
+        const categoryName = selectedCategories[0] || ""; 
+        
+        let mappedProducts = categoryProducts.map((p: any) => ({
+          id: p.productId, // Assuming your API returns productId
+          name: p.name,
+          price: parseFloat(p.price),
+          originalPrice: p.originalPrice
+            ? parseFloat(p.originalPrice)
+            : undefined,
+          image: p.imageUrls && p.imageUrls.length > 0 ? p.imageUrls[0] : "",
+          rating: p.rating || 0,
+          reviews: p.reviews ? p.reviews.length : 0, // Your API includes reviews array
+          category: categoryName, // We add the name from state
+          description: p.description || "",
+        }));
+
+        // 3. Apply client-side filters, sort, and pagination
+        // Your new API doesn't do this, so we do it here,
+        // just like in the search path.
+        
+        // Filter by price (category is already filtered by the API)
+        mappedProducts = mappedProducts.filter(
+          (p: Product) => p.price >= priceRange[0] && p.price <= priceRange[1]
+        );
+
+        // Apply client-side sorting
+        switch (sortBy) {
+          case "price-low":
+            mappedProducts.sort((a, b) => a.price - b.price);
+            break;
+          case "price-high":
+            mappedProducts.sort((a, b) => b.price - a.price);
+            break;
+          case "rating":
+            mappedProducts.sort((a, b) => b.rating - a.rating);
+            break;
+        }
+
+        // Apply client-side pagination
+        const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+        const endIndex = startIndex + PRODUCTS_PER_PAGE;
+        const paginatedProducts = mappedProducts.slice(startIndex, endIndex);
+
+        setProducts(paginatedProducts);
+        setTotalProducts(mappedProducts.length);
+        setTotalPages(Math.ceil(mappedProducts.length / PRODUCTS_PER_PAGE));
+        
+      } 
+      // ==========================================================
+      // END OF NEW LOGIC
+      // ==========================================================
+      
+      // Path 3: NO Search, NO Category ID from URL (Fallback)
+      // This is the old "else" block. It handles "All Products"
+      // or when a user *only* uses the filter checkboxes.
+      else {
+        const params = new URLSearchParams();
+        if (selectedCategories.length > 0)
+          params.append("categories", selectedCategories.join(","));
+        params.append("sortBy", sortBy);
+        params.append("priceMin", String(priceRange[0]));
+        params.append("priceMax", String(priceRange[1]));
+        params.append("page", String(currentPage));
+        params.append("limit", String(PRODUCTS_PER_PAGE));
+
+        const response = await fetch(
+          `http://localhost:3000/products?${params.toString()}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch products. Check the backend API.");
+        }
+
+        const data = await response.json();
+        // This API returns a different shape, so we adapt
+        // Note: You'll need to make sure data.products matches your
+        // frontend Product interface, especially for 'image'.
+        setProducts(data.products); 
+        setTotalPages(data.totalPages);
+        setTotalProducts(data.totalProducts);
       }
-    };
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchProducts();
-  }, [searchQuery, selectedCategories, sortBy, priceRange, currentPage]);
-  // ========== END OF MAIN CHANGE ==========
-
+  fetchProducts();
+}, [
+  searchQuery, 
+  categoryIdUrlParam, // <-- Add this to the dependency array
+  selectedCategories, 
+  sortBy, 
+  priceRange, 
+  currentPage
+]);
   const handleCategoryChange = (categoryName: string) => {
     setSelectedCategories((prev) =>
       prev.includes(categoryName)

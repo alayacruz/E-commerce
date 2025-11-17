@@ -114,13 +114,22 @@ searchRouter.post("/", async (req, res) => {
       searchResId.push(String(e._id));
     });
     console.log("searcResIds", searchResId);
-    const results = await prisma.product.findMany({
-      where: {
-        productId: {
-          in: searchResId,
-        },
-      },
-    });
+   const results = await prisma.product.findMany({
+  where: {
+    productId: {
+      in: searchResId,
+    },
+  },
+ 
+  include: {
+    category: {
+      select: { categoryName: true },
+    },
+    _count: {
+      select: { reviews: true },
+    },
+  },
+});
     console.log("results arr: ", results);
     if (!results)
       return res.status(200).json({ message: "Nothing to see here!" });
