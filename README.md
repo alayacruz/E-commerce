@@ -1,17 +1,38 @@
 ## Project Overview
 
 This is a full-stack **Online Shopping Database Management System** catering to both buyers and sellers. The platform supports end-to-end product lifecycle management — from seller listings and inventory to buyer discovery, cart management, and checkout.
-
-The system incorporates a **Recommendation Engine** powered by **content-based filtering**, built as a standalone Python ML module. It uses a trained TF-IDF vectoriser and precomputed product vectors to surface relevant products to buyers based on product attributes and similarity scores.
+The system also incorporates a **Recommendation Engine** powered by **content-based filtering**.
 
 The database is designed using **Entity-Relationship (ER) Modelling** in **Boyce-Codd Normal Form (BCNF)** to ensure data integrity and eliminate redundancy. It is managed via **Prisma ORM** backed by **PostgreSQL**.
 
-##  Architecture
+##  Project Structure
+```
+
 E-commerce/
-├── frontend/          # React + Vite + TypeScript
-├── backend/           # Express.js + Node.js + TypeScript
-├── ml/                # Python recommendation engine (content-based filtering)
+├── frontend/                  # React + Vite + TypeScript
+│   └── src/
+│       ├── components/        # Reusable UI components
+│       ├── contexts/          # React context providers
+│       ├── pages/             # Route-level page components
+│       └── public/            # Static assets
+├── backend/                   # Express.js + Node.js + TypeScript
+│   ├── middleware/            # Auth, error handling, etc.
+│   ├── prisma/                # Schema & migrations (PostgreSQL)
+│   └── routers/               # API route handlers
+│       ├── authRouter.js
+│       ├── productRouter.js
+│       ├── recommendationRouter.js
+│       ├── cartRouter.js
+│       ├── orderRouter.js
+│       ├── sellerRouter.js
+│       └── ...
+├── ml/                        # Python recommendation engine
+│   ├── train.py               # Model training (TF-IDF + content-based filtering)
+│   ├── main.py                # Inference / recommendation serving
+│   ├── vectoriser.pkl         # Trained TF-IDF vectoriser
+│   └── product_vectors.pkl    # Precomputed product feature vectors
 └── README.md
+```
 
 
 ### Tech Stack
@@ -47,7 +68,7 @@ E-commerce/
 - **Vectorisation**: TF-IDF (scikit-learn)
 - **Artefacts**: Pre-trained vectoriser (`vectoriser.pkl`) and product vectors (`product_vectors.pkl`)
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - Node.js (v18 or higher)
@@ -117,7 +138,7 @@ VITE_API_BASE_URL=http://localhost:3000
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_anon_key
 
-## ✨ Features
+##  Features
 
 - **Dual User Roles**: Separate flows for buyers (browse, cart, checkout) and sellers (listings, inventory, orders)
 - **Recommendation Engine**: Content-based filtering using TF-IDF vectorisation to surface relevant products based on item attributes and similarity
@@ -131,7 +152,7 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 - **Responsive Design**: Tailwind CSS for mobile-first responsive design
 - **Type Safety**: Full TypeScript support in both frontend and backend
 
-## 📦 Dependencies
+##  Dependencies
 
 ### Frontend Dependencies
 ```json
@@ -194,50 +215,35 @@ Ensure Elasticsearch is running and configured in your environment variables for
 
 Redis is used for caching frequently accessed data. Make sure the Redis server is running on the configured URL.
 
-## 📝 Project Structure
-
-- **frontend/**: React Vite application with TypeScript
-  - Components
-  - Pages/Routes
-  - Services
-  - Styling with Tailwind CSS
-
-- **backend/**: Express.js application with TypeScript
-  - Routes
-  - Controllers
-  - Models (Prisma / PostgreSQL)
-  - Middleware
-  - Services
-
-- **ml/**: Python recommendation engine
-  - `train.py` — trains the TF-IDF vectoriser and computes product vectors
-  - `main.py` — inference and recommendation serving
-  - `vectoriser.pkl` — serialised trained vectoriser
-  - `product_vectors.pkl` — precomputed product feature vectors
-
-## 🔒 Security Features
+##  Security Features
 
 - **JWT Authentication**: Secure token-based authentication
 - **Password Hashing**: Bcrypt for secure password storage
 - **CORS Configuration**: Protected API endpoints
 - **Environment Variables**: Sensitive data stored in `.env` files
 
-## 📝 License
+##  License
 
 ISC
 
-## 👤 Author
+##  Author
+This project was built as a team effort by:
 
-[alayacruz](https://github.com/alayacruz)
+| Name |
+|---|
+| Prakriti Pawar |
+| Alaya D'Cruz |
+| Anushka Krishnan |
+| Vanshika Gupta |
 
-## 🤝 Contributing
+
+## Contributing
 
 Contributions are welcome! Feel free to open issues and pull requests.
 
-## 📞 Support
+## Support
 
 For issues and questions, please open an issue on the GitHub repository.
 
 ---
 
-**Last Updated**: June 8, 2026
