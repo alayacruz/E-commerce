@@ -1,19 +1,18 @@
-# E-commerce Platform
+## Project Overview
 
-A full-stack e-commerce application built with modern web technologies. This project features a TypeScript backend with Express.js and a React frontend with Vite.
+This is a full-stack **Online Shopping Database Management System** catering to both buyers and sellers. The platform supports end-to-end product lifecycle management — from seller listings and inventory to buyer discovery, cart management, and checkout.
 
-## 📋 Project Overview
+The system incorporates a **Recommendation Engine** powered by **content-based filtering**, built as a standalone Python ML module. It uses a trained TF-IDF vectoriser and precomputed product vectors to surface relevant products to buyers based on product attributes and similarity scores.
 
-This is a complete e-commerce solution with separate frontend and backend implementations. The platform is built to handle product listings, user authentication, payments, and order management.
+The database is designed using **Entity-Relationship (ER) Modelling** in **Boyce-Codd Normal Form (BCNF)** to ensure data integrity and eliminate redundancy. It is managed via **Prisma ORM** backed by **PostgreSQL**.
 
-## 🏗️ Architecture
-
-```
+##  Architecture
 E-commerce/
 ├── frontend/          # React + Vite + TypeScript
-├── backend/          # Express.js + Node.js + TypeScript
+├── backend/           # Express.js + Node.js + TypeScript
+├── ml/                # Python recommendation engine (content-based filtering)
 └── README.md
-```
+
 
 ### Tech Stack
 
@@ -33,6 +32,7 @@ E-commerce/
 - **Framework**: Express.js 5.1.0
 - **Language**: TypeScript 5.9.3
 - **Database ORM**: Prisma 6.19.0
+- **Database**: PostgreSQL
 - **Authentication**: JWT (jsonwebtoken 9.0.2)
 - **Caching**: Redis 5.9.0
 - **Search**: Elasticsearch 9.2.0
@@ -40,15 +40,21 @@ E-commerce/
 - **Payment Processing**: PayPal Server SDK 1.0.0
 - **File Upload**: Multer 2.0.2
 - **Security**: Bcrypt 6.0.0
-- **API Documentation**: CORS 2.8.5
+
+**ML / Recommendation Engine**
+- **Language**: Python
+- **Approach**: Content-Based Filtering
+- **Vectorisation**: TF-IDF (scikit-learn)
+- **Artefacts**: Pre-trained vectoriser (`vectoriser.pkl`) and product vectors (`product_vectors.pkl`)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js (v18 or higher)
 - npm or yarn
+- Python 3.8+
 - Redis (for caching)
-- PostgreSQL or MySQL (for Prisma)
+- PostgreSQL (for Prisma)
 
 ### Frontend Setup
 
@@ -77,13 +83,27 @@ npm start
 - `npm start` - Start the server (node server.js)
 - `npm test` - Run tests
 
+### ML Module Setup
+
+```bash
+cd ml
+pip install -r requirements.txt
+
+# To retrain the model
+python train.py
+
+# To run inference / test recommendations
+python main.py
+```
+
+> Pre-trained artefacts (`vectoriser.pkl` and `product_vectors.pkl`) are included. Only run `train.py` if you want to retrain on updated product data.
+
 ### Environment Configuration
 
 Create `.env` files in both `frontend` and `backend` directories with necessary configuration:
 
 **Backend `.env` example:**
-```
-DATABASE_URL=your_database_url
+DATABASE_URL=your_postgresql_database_url
 REDIS_URL=your_redis_url
 JWT_SECRET=your_secret_key
 CLOUDINARY_NAME=your_cloudinary_name
@@ -91,23 +111,22 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 PAYPAL_CLIENT_ID=your_paypal_client_id
 ELASTICSEARCH_URL=your_elasticsearch_url
-```
 
 **Frontend `.env` example:**
-```
 VITE_API_BASE_URL=http://localhost:3000
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_anon_key
-```
 
 ## ✨ Features
 
+- **Dual User Roles**: Separate flows for buyers (browse, cart, checkout) and sellers (listings, inventory, orders)
+- **Recommendation Engine**: Content-based filtering using TF-IDF vectorisation to surface relevant products based on item attributes and similarity
 - **User Authentication**: Secure JWT-based authentication with bcrypt password hashing
 - **Product Management**: Browse and search products with Elasticsearch
 - **File Storage**: Image uploads via Cloudinary integration
 - **Payment Processing**: PayPal integration for checkout
 - **Caching**: Redis for improved performance
-- **Database**: Prisma ORM for type-safe database operations
+- **Database Design**: ER modelling in BCNF, implemented with Prisma ORM and PostgreSQL
 - **Real-time Notifications**: Toast notifications for user feedback
 - **Responsive Design**: Tailwind CSS for mobile-first responsive design
 - **Type Safety**: Full TypeScript support in both frontend and backend
@@ -148,11 +167,14 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 }
 ```
 
+### ML Dependencies
+See `ml/requirements.txt` for the full Python dependency list.
+
 ## 🔧 Configuration
 
-### Database (Prisma)
+### Database (Prisma + PostgreSQL)
 
-The project uses Prisma as the ORM. To initialize the database:
+The project uses Prisma as the ORM with PostgreSQL as the database, designed following ER modelling principles in BCNF. To initialise the database:
 
 ```bash
 cd backend
@@ -160,13 +182,17 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
+### Recommendation Engine
+
+The content-based filtering engine is located in the `ml/` directory. It uses TF-IDF vectorisation over product attributes to compute similarity scores and generate personalised recommendations for buyers. Pre-trained model artefacts are committed to the repo for convenience. To retrain on fresh data, run `python train.py` from the `ml/` directory.
+
 ### Elasticsearch
 
-Ensure Elasticsearch is running and configured in your environment variables for product search functionality.
+Ensure Elasticsearch is running and configured in your environment variables for full-text product search functionality.
 
 ### Redis
 
-Redis is used for caching. Make sure Redis server is running on the configured URL.
+Redis is used for caching frequently accessed data. Make sure the Redis server is running on the configured URL.
 
 ## 📝 Project Structure
 
@@ -175,35 +201,26 @@ Redis is used for caching. Make sure Redis server is running on the configured U
   - Pages/Routes
   - Services
   - Styling with Tailwind CSS
-  
+
 - **backend/**: Express.js application with TypeScript
   - Routes
   - Controllers
-  - Models (Prisma)
+  - Models (Prisma / PostgreSQL)
   - Middleware
   - Services
 
-## 🔐 Security Features
+- **ml/**: Python recommendation engine
+  - `train.py` — trains the TF-IDF vectoriser and computes product vectors
+  - `main.py` — inference and recommendation serving
+  - `vectoriser.pkl` — serialised trained vectoriser
+  - `product_vectors.pkl` — precomputed product feature vectors
+
+## 🔒 Security Features
 
 - **JWT Authentication**: Secure token-based authentication
 - **Password Hashing**: Bcrypt for secure password storage
 - **CORS Configuration**: Protected API endpoints
 - **Environment Variables**: Sensitive data stored in `.env` files
-
-## 📊 Repository Stats
-
-- **Primary Language**: TypeScript (77.5%)
-- **Secondary Language**: JavaScript (21.4%)
-- **Other**: 1.1%
-
-## 🚀 Deployment
-
-Both frontend and backend can be deployed to various platforms:
-
-- **Frontend**: Vercel, Netlify, GitHub Pages
-- **Backend**: Heroku, Railway, AWS, Google Cloud
-
-Ensure all environment variables are properly configured in your deployment platform.
 
 ## 📝 License
 
