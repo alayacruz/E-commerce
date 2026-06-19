@@ -37,7 +37,7 @@ E-commerce/
 
 ### Tech Stack
 
-**Frontend (77.5% TypeScript, 21.4% JavaScript)**
+**Frontend **
 - **Framework**: React 18.3.1
 - **Build Tool**: Vite 5.4.2
 - **Language**: TypeScript 5.5.3
