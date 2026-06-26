@@ -40,7 +40,6 @@ model Buyer {
   buyer_id  String     @id @default(uuid())
   gender    Gender
   dob       DateTime
-  addresses Address[]
   user      User       @relation(fields: [buyer_id], references: [user_id], onDelete: Cascade)
   carts     Cart?
   orders    Order[]
@@ -57,8 +56,6 @@ model Address {
   state         String
   country       String
   pin           String
-  buyerBuyer_id String?
-  Buyer         Buyer?  @relation(fields: [buyerBuyer_id], references: [buyer_id], onDelete: Cascade)
   user          User    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
