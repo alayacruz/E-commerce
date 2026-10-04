@@ -1,0 +1,17 @@
+from node:20-alpine
+workdir /app
+
+# Install OpenSSL for the Prisma query engine
+RUN apk add --no-cache openssl
+
+copy package*.json ./
+run npm install
+
+copy . .
+
+ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
+run npx prisma generate
+
+expose 5000
+
+cmd ["npm","start"]
