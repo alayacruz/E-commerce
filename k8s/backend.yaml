@@ -6,25 +6,28 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
-  template:
+      app: backend #how to identify which pod it owns (selector)
+  template: #blueprint of the pod
     metadata:
       labels:
-        app: backend
+        app: backend #apply the label to the pod
     spec:
       containers:
         - name: backend
           image: shophub-backend
           imagePullPolicy: Never # Forces K8s to use your local image, not the internet
           ports:
-            - containerPort: 5000
+            - containerPort: 3000
           env:
         #using postgres-service instead of localhost
+            - name: PORT
+              value: "5000"
             - name: DATABASE_URL
               value: "postgresql://admin:password123@postgres-service:5432/ecommerce?schema=public"
-            - name: ELASTICSEARCH_URL
+            - name: ELASTIC_ENDPOINT
               value: "http://elasticsearch-service:9200"
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -33,5 +36,5 @@ spec:
   selector:
     app: backend
   ports:
-    - port: 5000
-      targetPort: 5000
+    - port: 5000 #the port the service listens to
+      targetPort: 3000 #the port the on the pod where traffic goes 
